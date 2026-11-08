@@ -67,10 +67,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenStudentTest }) => {
       <div className="flex items-center gap-3 min-w-0">
         <div>
           <h2 className="text-sm font-bold text-slate-900 truncate">
-            {settings.schoolName || 'Trường THPT'}
+            {settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT'}
           </h2>
           <p className="text-xs text-slate-500 truncate">
-            {settings.teacherName} · Năm học {settings.schoolYear}
+            {settings.teacherName} · Năm học {settings.schoolYear || '2026 - 2027'}
           </p>
         </div>
       </div>

@@ -35,7 +35,7 @@ export const ExamBuilderView: React.FC = () => {
   const [title, setTitle] = useState('Kiểm tra Giữa kì I - Công nghệ');
   const [grade, setGrade] = useState<GradeLevel>('11');
   const [durationMinutes, setDurationMinutes] = useState<number>(45);
-  const [schoolYear, setSchoolYear] = useState('2024-2025');
+  const [schoolYear, setSchoolYear] = useState(settings.schoolYear || '2026 - 2027');
   const [term, setTerm] = useState<Exam['term']>('giua_ky_1');
 
   // Điểm từng phần

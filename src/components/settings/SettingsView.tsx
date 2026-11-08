@@ -41,10 +41,16 @@ export const SettingsView: React.FC = () => {
   const [sheetUrl, setSheetUrl] = useState(settings.sheetUrl || '');
   const [teacherPin, setTeacherPin] = useState(settings.teacherPin || '123456');
   const [teacherName, setTeacherName] = useState(settings.teacherName || '');
-  const [schoolName, setSchoolName] = useState(settings.schoolName || '');
-  const [schoolYear, setSchoolYear] = useState(settings.schoolYear || '2024-2025');
+  const [schoolName, setSchoolName] = useState(settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT');
+  const [schoolYear, setSchoolYear] = useState(settings.schoolYear || '2026 - 2027');
   const [autoSync, setAutoSync] = useState(settings.autoSync ?? true);
   const [syncIntervalSeconds, setSyncIntervalSeconds] = useState(settings.syncIntervalSeconds || 60);
+
+  // Sync with context settings
+  React.useEffect(() => {
+    if (settings.schoolName) setSchoolName(settings.schoolName);
+    if (settings.schoolYear) setSchoolYear(settings.schoolYear);
+  }, [settings.schoolName, settings.schoolYear]);
 
   // Ping test result
   const [isTesting, setIsTesting] = useState(false);
@@ -262,7 +268,7 @@ export const SettingsView: React.FC = () => {
               type="text"
               value={schoolName}
               onChange={e => setSchoolName(e.target.value)}
-              placeholder="VD: Trường THPT Chuyên..."
+              placeholder="TRƯỜNG THPT CHUYÊN LÊ KHIẾT"
               className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>
@@ -284,7 +290,7 @@ export const SettingsView: React.FC = () => {
               type="text"
               value={schoolYear}
               onChange={e => setSchoolYear(e.target.value)}
-              placeholder="2024-2025"
+              placeholder="2026 - 2027"
               className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>

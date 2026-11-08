@@ -106,15 +106,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          schoolName:
+            parsed.schoolName && parsed.schoolName !== 'Trường THPT Chuẩn Quốc Gia'
+              ? parsed.schoolName
+              : 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT',
+          schoolYear:
+            parsed.schoolYear && parsed.schoolYear !== '2024-2025'
+              ? parsed.schoolYear
+              : '2026 - 2027',
+        };
+      }
     } catch (e) {}
     return {
       scriptUrl: '',
       sheetUrl: '',
       teacherPin: '123456',
       teacherName: 'Thầy/Cô Giáo viên Công nghệ',
-      schoolName: 'Trường THPT Chuẩn Quốc Gia',
-      schoolYear: '2024-2025',
+      schoolName: 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT',
+      schoolYear: '2026 - 2027',
       autoSync: true,
       syncIntervalSeconds: 60,
       lastSyncTime: null,

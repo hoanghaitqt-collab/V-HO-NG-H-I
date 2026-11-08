@@ -127,7 +127,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({
               {/* Tiêu đề in chuẩn Bộ GD&ĐT */}
               <div className="grid grid-cols-2 text-center text-xs pb-4 border-b border-slate-300">
                 <div>
-                  <div className="font-bold uppercase">{settings.schoolName || 'TRƯỜNG THPT'}</div>
+                  <div className="font-bold uppercase">{settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT'}</div>
                   <div>TỔ BỘ MÔN CÔNG NGHỆ</div>
                   <div className="mt-1 font-serif">---------------</div>
                 </div>

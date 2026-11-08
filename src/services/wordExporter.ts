@@ -15,9 +15,9 @@ export async function exportExamToDocx(
   settings: Partial<AppSettings> = {},
   includeAnswerKey = true
 ) {
-  const schoolName = settings.schoolName || 'TRƯỜNG THPT CHUYÊN & CHUẨN';
+  const schoolName = settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT';
   const teacherName = settings.teacherName || 'Giáo viên bộ môn Công nghệ';
-  const schoolYear = exam.schoolYear || settings.schoolYear || '2024-2025';
+  const schoolYear = exam.schoolYear || settings.schoolYear || '2026 - 2027';
 
   const docChildren: any[] = [];
 
@@ -318,8 +318,8 @@ export async function exportShuffledExamPackageToDocx(
   pkg: ShuffledExamPackage,
   settings: Partial<AppSettings> = {}
 ) {
-  const schoolName = settings.schoolName || 'TRƯỜNG THPT';
-  const schoolYear = pkg.schoolYear || settings.schoolYear || '2024-2025';
+  const schoolName = settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT';
+  const schoolYear = pkg.schoolYear || settings.schoolYear || '2026 - 2027';
 
   const docChildren: any[] = [];
 

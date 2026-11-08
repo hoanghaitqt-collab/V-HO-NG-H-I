@@ -33,6 +33,7 @@ export const ClassManagerView: React.FC = () => {
     addStudent,
     importStudents,
     deleteStudent,
+    settings,
   } = useApp();
 
   const [selectedClassId, setSelectedClassId] = useState<string>(classes[0]?.id || '');
@@ -76,7 +77,7 @@ export const ClassManagerView: React.FC = () => {
     addClassGroup({
       name: newClassName.trim().toUpperCase(),
       grade: newClassGrade,
-      academicYear: '2024-2025',
+      academicYear: settings.schoolYear || '2026 - 2027',
       note: newClassNote,
     });
 
@@ -244,7 +245,7 @@ export const ClassManagerView: React.FC = () => {
                 </span>
               </div>
               <div className="mt-2 text-xl font-extrabold text-slate-900">{c.name}</div>
-              <p className="mt-1 text-[11px] text-slate-500 truncate">{c.note || 'Năm học 2024-2025'}</p>
+              <p className="mt-1 text-[11px] text-slate-500 truncate">{c.note || `Năm học ${settings.schoolYear || '2026 - 2027'}`}</p>
             </button>
           );
         })}
