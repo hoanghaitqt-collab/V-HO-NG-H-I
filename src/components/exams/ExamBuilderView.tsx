@@ -317,18 +317,45 @@ export const ExamBuilderView: React.FC = () => {
           </p>
         </div>
 
+        {/* CÁC NÚT CHỨC NĂNG HÀNG NGANG VỚI MÀU SẮC BẮT MẮT RIÊNG BIỆT */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Nút 1: Tải file đề gốc (Tím Indigo) */}
           <button
             onClick={() => setMode('import')}
-            className={`px-4 py-2.5 rounded-xl font-bold text-sm shadow-xs flex items-center gap-1.5 transition ${
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-98 ${
               mode === 'import'
-                ? 'bg-indigo-700 text-white shadow-md'
+                ? 'bg-indigo-700 text-white shadow-md ring-2 ring-indigo-400 ring-offset-1'
                 : 'bg-indigo-600 hover:bg-indigo-700 text-white'
             }`}
           >
-            <Upload className="w-4 h-4" /> Tải file đề gốc
+            <Upload className="w-4 h-4" /> 📂 Tải file đề gốc
           </button>
 
+          {/* Nút 2: Tự động theo Ma trận (Xanh dương Blue) */}
+          <button
+            onClick={() => setMode('matrix')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-98 ${
+              mode === 'matrix'
+                ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400 ring-offset-1'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            <Wand2 className="w-4 h-4 text-amber-300" /> ✨ Tạo theo Ma trận
+          </button>
+
+          {/* Nút 3: Chọn thủ công (Cam Amber) */}
+          <button
+            onClick={() => setMode('manual')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-98 ${
+              mode === 'manual'
+                ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-400 ring-offset-1'
+                : 'bg-amber-500 hover:bg-amber-600 text-white'
+            }`}
+          >
+            <ListCheck className="w-4 h-4" /> 📋 Chọn thủ công
+          </button>
+
+          {/* Nút 4: Xem trước & In (Xanh ngọc Teal) */}
           <button
             onClick={() => {
               const currentExamObj: Exam = {
@@ -347,16 +374,26 @@ export const ExamBuilderView: React.FC = () => {
               };
               setPreviewExam(currentExamObj);
             }}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm shadow-xs flex items-center gap-1.5 transition"
+            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-98"
           >
-            <Eye className="w-4 h-4 text-blue-600" /> Xem trước & In
+            <Eye className="w-4 h-4" /> 👁 Xem trước & In
           </button>
 
+          {/* Nút 5: Lưu đề thi (Xanh lá Emerald) */}
           <button
             onClick={handleSaveExam}
-            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md flex items-center gap-2 transition"
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/25 flex items-center gap-1.5 transition cursor-pointer active:scale-98"
           >
-            <CheckCircle className="w-4 h-4" /> Lưu đề thi
+            <CheckCircle className="w-4 h-4" /> 💾 Lưu đề thi
+          </button>
+
+          {/* Nút 6: Xáo mã đề (Tím Purple) */}
+          <button
+            onClick={() => setActiveTab('shuffler')}
+            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-98"
+            title="Chuyển sang trang xáo trộn nhiều mã đề"
+          >
+            <Shuffle className="w-4 h-4" /> 🔀 Xáo mã đề
           </button>
         </div>
       </div>
@@ -481,42 +518,141 @@ export const ExamBuilderView: React.FC = () => {
         </div>
       </div>
 
-      {/* BƯỚC 2: PHƯƠNG THỨC CHỌN CÂU HỎI (MA TRẬN vs THỦ CÔNG) */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* BƯỚC 2: PHƯƠNG THỨC CHỌN CÁCH TẠO ĐỀ (SẮP XẾP HÀNG NGANG, MÀU SẮC BẮT MẮT) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
+        <div className="pb-3 border-b border-slate-100">
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-extrabold">
               2
             </span>
-            Chọn cách tạo đề
+            Chọn phương thức tạo đề thi
           </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Chọn 1 trong 3 cách: Tải file đề gốc có sẵn (Word/Excel), tạo tự động theo Ma trận tỉ lệ, hoặc chọn thủ công từng câu.
+          </p>
+        </div>
 
-          <div className="flex flex-wrap p-1 bg-slate-100 rounded-xl text-xs font-bold gap-1">
-            <button
-              onClick={() => setMode('import')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition ${
-                mode === 'import' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:text-indigo-700'
+        {/* 3 NÚT PHƯƠNG THỨC TẠO ĐỀ NẰM THEO HÀNG NGANG VỚI MÀU SẮC RIÊNG BIỆT */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* NÚT 1: TẢI FILE ĐỀ GỐC (MÀU TÍM INDIGO) */}
+          <button
+            type="button"
+            onClick={() => setMode('import')}
+            className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer flex items-start gap-3.5 border-2 ${
+              mode === 'import'
+                ? 'bg-gradient-to-br from-indigo-600 to-violet-700 text-white border-indigo-600 shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400 ring-offset-2'
+                : 'bg-indigo-50/50 hover:bg-indigo-50 text-slate-800 border-indigo-200/80 hover:border-indigo-400'
+            }`}
+          >
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition ${
+                mode === 'import' ? 'bg-white/20 text-white' : 'bg-indigo-600 text-white shadow-xs'
               }`}
             >
-              <Upload className="w-3.5 h-3.5" /> 📂 Tải file đề gốc
-            </button>
-            <button
-              onClick={() => setMode('matrix')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                mode === 'matrix' ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-600'
+              <Upload className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className={`text-sm font-bold ${mode === 'import' ? 'text-white' : 'text-indigo-950'}`}>
+                  📂 Tải file đề gốc
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    mode === 'import' ? 'bg-white/25 text-white' : 'bg-indigo-100 text-indigo-800'
+                  }`}
+                >
+                  Tiện nhất
+                </span>
+              </div>
+              <p
+                className={`text-xs mt-1 leading-relaxed ${
+                  mode === 'import' ? 'text-indigo-100' : 'text-slate-600'
+                }`}
+              >
+                Nhập file Word (.docx), Excel, tự động tách 4 phần & sinh mã xáo ngay.
+              </p>
+            </div>
+          </button>
+
+          {/* NÚT 2: TỰ ĐỘNG THEO MA TRẬN (MÀU XANH DƯƠNG BLUE) */}
+          <button
+            type="button"
+            onClick={() => setMode('matrix')}
+            className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer flex items-start gap-3.5 border-2 ${
+              mode === 'matrix'
+                ? 'bg-gradient-to-br from-blue-600 to-sky-700 text-white border-blue-600 shadow-md shadow-blue-600/30 ring-2 ring-blue-400 ring-offset-2'
+                : 'bg-blue-50/50 hover:bg-blue-50 text-slate-800 border-blue-200/80 hover:border-blue-400'
+            }`}
+          >
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition ${
+                mode === 'matrix' ? 'bg-white/20 text-white' : 'bg-blue-600 text-white shadow-xs'
               }`}
             >
-              <Wand2 className="w-3.5 h-3.5" /> Tự động theo Ma trận
-            </button>
-            <button
-              onClick={() => setMode('manual')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                mode === 'manual' ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-600'
+              <Wand2 className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className={`text-sm font-bold ${mode === 'matrix' ? 'text-white' : 'text-blue-950'}`}>
+                  ✨ Tự động theo Ma trận
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    mode === 'matrix' ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-800'
+                  }`}
+                >
+                  Chuẩn Bộ GD
+                </span>
+              </div>
+              <p
+                className={`text-xs mt-1 leading-relaxed ${
+                  mode === 'matrix' ? 'text-blue-100' : 'text-slate-600'
+                }`}
+              >
+                Bốc ngẫu nhiên câu hỏi theo cấu trúc ma trận Biết, Hiểu, Vận dụng.
+              </p>
+            </div>
+          </button>
+
+          {/* NÚT 3: CHỌN THỦ CÔNG (MÀU CAM AMBER) */}
+          <button
+            type="button"
+            onClick={() => setMode('manual')}
+            className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer flex items-start gap-3.5 border-2 ${
+              mode === 'manual'
+                ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-500 shadow-md shadow-amber-500/30 ring-2 ring-amber-400 ring-offset-2'
+                : 'bg-amber-50/50 hover:bg-amber-50 text-slate-800 border-amber-200/80 hover:border-amber-400'
+            }`}
+          >
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition ${
+                mode === 'manual' ? 'bg-white/20 text-white' : 'bg-amber-500 text-white shadow-xs'
               }`}
             >
-              <ListCheck className="w-3.5 h-3.5" /> Chọn thủ công từ ngân hàng
-            </button>
-          </div>
+              <ListCheck className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className={`text-sm font-bold ${mode === 'manual' ? 'text-white' : 'text-amber-950'}`}>
+                  📋 Chọn thủ công
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    mode === 'manual' ? 'bg-white/25 text-white' : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  Tự chọn
+                </span>
+              </div>
+              <p
+                className={`text-xs mt-1 leading-relaxed ${
+                  mode === 'manual' ? 'text-amber-100' : 'text-slate-600'
+                }`}
+              >
+                Chủ động lọc theo bài học và tick chọn từng câu hỏi từ ngân hàng.
+              </p>
+            </div>
+          </button>
         </div>
 
         {/* CHẾ ĐỘ TẢI FILE ĐỀ GỐC */}
@@ -915,32 +1051,32 @@ export const ExamBuilderView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setPreviewExam(exam)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition"
+                  className="px-3 py-1.5 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer active:scale-98"
                 >
-                  <Eye className="w-3.5 h-3.5" /> Xem / In
+                  <Eye className="w-3.5 h-3.5" /> 👁 Xem / In
                 </button>
 
                 <button
                   onClick={() => exportExamToDocx(exam, questionsMap, settings, true)}
-                  className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-1.5 transition"
+                  className="px-3 py-1.5 rounded-xl border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer active:scale-98"
                   title="Xuất file Word (.docx) đề gốc kèm đáp án"
                 >
-                  <Download className="w-3.5 h-3.5" /> Word
+                  <Download className="w-3.5 h-3.5" /> 📄 Word
                 </button>
 
                 <button
                   onClick={() => setActiveTab('shuffler')}
-                  className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition"
+                  className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-98"
                 >
-                  <Shuffle className="w-3.5 h-3.5" /> Xáo đề
+                  <Shuffle className="w-3.5 h-3.5" /> 🔀 Xáo đề
                 </button>
 
                 <button
                   onClick={() => setDeleteConfirmId(exam.id)}
-                  className="p-2 text-slate-400 hover:text-rose-600 rounded-lg transition"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
                   title="Xóa đề thi"
                 >
                   <Trash2 className="w-4 h-4" />

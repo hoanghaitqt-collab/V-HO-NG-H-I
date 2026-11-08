@@ -285,11 +285,11 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
           </p>
         </div>
 
-        {/* Nút chọn file & Nút tải mẫu */}
+        {/* Nút chọn file & Nút tải mẫu sắp xếp hàng ngang với màu sắc riêng biệt */}
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <label className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm cursor-pointer transition">
+          <label className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-600/25 cursor-pointer transition active:scale-98">
             <Upload className="w-4 h-4" />
-            <span>Chọn file đề gốc</span>
+            <span>📂 Chọn file đề gốc</span>
             <input
               type="file"
               accept=".docx,.xlsx,.xls,.csv,.txt"
@@ -305,21 +305,21 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
           <button
             type="button"
             onClick={downloadSampleOriginalExamDocx}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 font-semibold text-xs shadow-2xs transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-blue-400 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs shadow-xs transition active:scale-98"
             title="Tải file Word chuẩn đề thi 4 phần có đáp án"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Tải đề gốc mẫu Word (.docx)</span>
+            <Download className="w-4 h-4" />
+            <span>📄 Tải đề gốc mẫu Word (.docx)</span>
           </button>
 
           <button
             type="button"
             onClick={downloadSampleExcel}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 font-semibold text-xs shadow-2xs transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs shadow-xs transition active:scale-98"
             title="Tải bảng mẫu Excel các câu hỏi"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Tải mẫu Excel (.xlsx)</span>
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>📊 Tải mẫu Excel (.xlsx)</span>
           </button>
         </div>
 
@@ -658,27 +658,26 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
                   const { exam, map } = buildExamObject();
                   onPreviewOriginalExam(exam, map);
                 }}
-                className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition"
+                className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-98"
               >
-                <Eye className="w-4 h-4" /> Xem trước đề gốc
+                <Eye className="w-4 h-4" /> 👁 Xem trước đề gốc
               </button>
 
               <button
                 type="button"
                 onClick={handleCreateOriginalExamOnly}
-                className="px-4 py-2.5 rounded-xl border border-slate-600 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-98"
               >
-                <FileText className="w-4 h-4 text-blue-400" />
-                Lưu đề thi gốc
+                <FileText className="w-4 h-4" /> 💾 Lưu đề thi gốc
               </button>
 
               <button
                 type="button"
                 onClick={handleCreateAndShuffleImmediately}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-extrabold flex items-center gap-2 transition shadow-md shadow-indigo-600/30 active:scale-98"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-xs font-extrabold flex items-center gap-2 transition shadow-md shadow-purple-600/30 cursor-pointer active:scale-98"
               >
                 <Shuffle className="w-4 h-4 text-amber-300" />
-                <span>Tạo đề & Xáo ngay thành {numberOfCodes} mã đề</span>
+                <span>🔀 Tạo đề & Xáo ngay thành {numberOfCodes} mã đề</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
