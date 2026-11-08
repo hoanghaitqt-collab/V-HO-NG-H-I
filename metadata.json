@@ -1,0 +1,6 @@
+{
+  "name": "Trợ lý Giáo viên Công nghệ – Ra đề, Xáo đề, Giao bài online",
+  "description": "Ứng dụng chuyên nghiệp dành cho giáo viên Công nghệ THPT: Quản lý ngân hàng câu hỏi, tạo và xáo mã đề, giao bài trực tuyến, tự động chấm điểm và đồng bộ Google Sheets 2 chiều.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
