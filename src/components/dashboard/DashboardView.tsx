@@ -59,10 +59,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenImportModal,
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-blue-100 text-xs font-semibold backdrop-blur-xs mb-3">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              Công nghệ THPT 2018 · Định hướng Công nghiệp
+              Công nghệ THPT 2018 · Tổ: Vật lí - Công nghệ
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Trợ lý Giáo viên Công nghệ
+              Kiểm tra, đánh giá môn Công nghệ
             </h1>
             <p className="mt-2 text-blue-100 text-base max-w-2xl leading-relaxed">
               Giải pháp toàn diện: Nhập ngân hàng câu hỏi, soạn ma trận đề thi chuẩn, xáo trộn nhiều mã đề, giao bài trực tuyến và tự động chấm điểm. Dữ liệu lưu an toàn trên Google Sheet.

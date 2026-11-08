@@ -48,8 +48,8 @@ export const Navigation: React.FC = () => {
             <Wrench className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-bold text-slate-900 text-base leading-tight">GV Công nghệ</h1>
-            <p className="text-xs text-slate-500">Định hướng Công nghiệp</p>
+            <h1 className="font-bold text-slate-900 text-sm leading-tight">Giáo viên: VÕ HOÀNG HẢI</h1>
+            <p className="text-xs text-slate-500">Tổ: Vật lí - Công nghệ</p>
           </div>
         </div>
 

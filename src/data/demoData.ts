@@ -254,7 +254,7 @@ export const DEMO_CLASSES: ClassGroup[] = [
     name: '11A1',
     grade: '11',
     academicYear: '2026 - 2027',
-    note: 'Lớp chọn tự nhiên - Định hướng Công nghiệp',
+    note: 'Lớp chọn tự nhiên - Tổ: Vật lí - Công nghệ',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   },

@@ -128,12 +128,13 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({
               <div className="grid grid-cols-2 text-center text-xs pb-4 border-b border-slate-300">
                 <div>
                   <div className="font-bold uppercase">{settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT'}</div>
-                  <div>TỔ BỘ MÔN CÔNG NGHỆ</div>
-                  <div className="mt-1 font-serif">---------------</div>
+                  <div className="font-semibold">TỔ: VẬT LÍ - CÔNG NGHỆ</div>
+                  <div className="text-[11px] text-slate-600">Giáo viên: {settings.teacherName || 'VÕ HOÀNG HẢI'}</div>
+                  <div className="mt-0.5 font-serif">---------------</div>
                 </div>
                 <div>
                   <div className="font-bold text-sm uppercase">{exam.title}</div>
-                  <div>MÔN: CÔNG NGHỆ {exam.grade} (CÔNG NGHIỆP)</div>
+                  <div>MÔN: CÔNG NGHỆ {exam.grade} (TỔ: VẬT LÍ - CÔNG NGHỆ)</div>
                   <div>Thời gian: {exam.durationMinutes} phút (Không kể phát đề)</div>
                   <div className="font-bold mt-1">MÃ ĐỀ THI: GỐC</div>
                 </div>

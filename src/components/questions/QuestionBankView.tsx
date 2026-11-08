@@ -117,7 +117,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({ onOpenImport
             Ngân hàng câu hỏi Công nghệ
           </h1>
           <p className="text-sm text-slate-500">
-            Tổng cộng: <strong className="text-slate-800">{questions.length}</strong> câu hỏi chuẩn CT GDPT 2018 (Công nghiệp).
+            Tổng cộng: <strong className="text-slate-800">{questions.length}</strong> câu hỏi chuẩn CT GDPT 2018 (Tổ: Vật lí - Công nghệ).
           </p>
         </div>
 

@@ -10,7 +10,7 @@ import { SyncQueueItem } from '../types';
  * của Google Sheet. Tự động khởi tạo 7 bảng dữ liệu và hỗ trợ toàn bộ API.
  */
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
- * TRỢ LÝ GIÁO VIÊN CÔNG NGHỆ THPT - GOOGLE APPS SCRIPT BACKEND
+ * KIỂM TRA, ĐÁNH GIÁ MÔN CÔNG NGHỆ - GOOGLE APPS SCRIPT BACKEND
  * Hướng dẫn:
  * 1. Mở Google Sheet -> Mở 'Tiện ích mở rộng' (Extensions) -> 'Apps Script'.
  * 2. Xóa hết mã cũ, dán toàn bộ đoạn mã này vào file Code.gs.
@@ -63,7 +63,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return HtmlService.createHtmlOutput('<h3>Ứng dụng Trợ lý Giáo viên Công nghệ đang hoạt động tốt!</h3>');
+  return HtmlService.createHtmlOutput('<h3>Ứng dụng Kiểm tra, đánh giá môn Công nghệ đang hoạt động tốt!</h3>');
 }
 
 function responseJSON(obj) {

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Định nghĩa dữ liệu cho ứng dụng Trợ lý Giáo viên Công nghệ THPT
+// Định nghĩa dữ liệu cho ứng dụng Kiểm tra, đánh giá môn Công nghệ THPT
 
 export type GradeLevel = '10' | '11' | '12';
 

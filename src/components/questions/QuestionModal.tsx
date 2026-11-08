@@ -188,7 +188,7 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
             <h3 className="text-xl font-bold text-slate-900">
               {questionToEdit ? 'Chỉnh sửa câu hỏi' : 'Thêm câu hỏi mới vào ngân hàng'}
             </h3>
-            <p className="text-xs text-slate-500">Môn Công nghệ THPT 2018 (Công nghiệp)</p>
+            <p className="text-xs text-slate-500">Môn Công nghệ THPT 2018 (Tổ: Vật lí - Công nghệ)</p>
           </div>
           <button
             onClick={onClose}

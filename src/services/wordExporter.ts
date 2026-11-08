@@ -16,7 +16,7 @@ export async function exportExamToDocx(
   includeAnswerKey = true
 ) {
   const schoolName = settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT';
-  const teacherName = settings.teacherName || 'Giáo viên bộ môn Công nghệ';
+  const teacherName = settings.teacherName || 'VÕ HOÀNG HẢI';
   const schoolYear = exam.schoolYear || settings.schoolYear || '2026 - 2027';
 
   const docChildren: any[] = [];
@@ -39,7 +39,7 @@ export async function exportExamToDocx(
             width: { size: 50, type: WidthType.PERCENTAGE },
             children: [
               new Paragraph({ text: schoolName.toUpperCase(), alignment: AlignmentType.CENTER }),
-              new Paragraph({ text: 'TỔ: KHOA HỌC TỰ NHIÊN & CÔNG NGHỆ', alignment: AlignmentType.CENTER }),
+              new Paragraph({ text: 'TỔ: VẬT LÍ - CÔNG NGHỆ', alignment: AlignmentType.CENTER }),
               new Paragraph({ text: '-----------------------', alignment: AlignmentType.CENTER }),
             ],
           }),
@@ -47,9 +47,9 @@ export async function exportExamToDocx(
             width: { size: 50, type: WidthType.PERCENTAGE },
             children: [
               new Paragraph({ children: [new TextRun({ text: exam.title.toUpperCase(), bold: true })], alignment: AlignmentType.CENTER }),
-              new Paragraph({ text: `Môn: Công nghệ ${exam.grade} (Định hướng Công nghiệp)`, alignment: AlignmentType.CENTER }),
-              new Paragraph({ text: `Thời gian làm bài: ${exam.durationMinutes} phút (Không kể phát đề)`, alignment: AlignmentType.CENTER }),
-              new Paragraph({ text: `Năm học: ${schoolYear}`, alignment: AlignmentType.CENTER }),
+              new Paragraph({ text: `Môn: Công nghệ ${exam.grade} (Tổ: Vật lí - Công nghệ)`, alignment: AlignmentType.CENTER }),
+              new Paragraph({ text: `Giáo viên ra đề: ${teacherName}`, alignment: AlignmentType.CENTER }),
+              new Paragraph({ text: `Thời gian làm bài: ${exam.durationMinutes} phút · Năm học: ${schoolYear}`, alignment: AlignmentType.CENTER }),
             ],
           }),
         ],

@@ -110,6 +110,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         return {
           ...parsed,
+          teacherName:
+            parsed.teacherName &&
+            parsed.teacherName !== 'Thầy/Cô Giáo viên Công nghệ' &&
+            parsed.teacherName !== 'Thầy/cô giáo viên Công nghệ'
+              ? parsed.teacherName
+              : 'VÕ HOÀNG HẢI',
           schoolName:
             parsed.schoolName && parsed.schoolName !== 'Trường THPT Chuẩn Quốc Gia'
               ? parsed.schoolName
@@ -125,7 +131,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       scriptUrl: '',
       sheetUrl: '',
       teacherPin: '123456',
-      teacherName: 'Thầy/Cô Giáo viên Công nghệ',
+      teacherName: 'VÕ HOÀNG HẢI',
       schoolName: 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT',
       schoolYear: '2026 - 2027',
       autoSync: true,
