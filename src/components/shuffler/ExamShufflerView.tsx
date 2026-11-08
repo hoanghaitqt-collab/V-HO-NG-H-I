@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Exam, Question, ShuffledExamPackage, ShuffledExamCode } from '../../types';
 import { generateShuffledCodes, ShufflerOptions } from '../../services/gradingService';
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export const ExamShufflerView: React.FC = () => {
-  const { exams, questions, saveShuffledPackage, settings } = useApp();
+  const { exams, questions, saveShuffledPackage, shuffledPackages, settings } = useApp();
 
   const [selectedExamId, setSelectedExamId] = useState<string>(exams[0]?.id || '');
   const [numberOfCodes, setNumberOfCodes] = useState<number>(4);
@@ -35,10 +35,22 @@ export const ExamShufflerView: React.FC = () => {
   const [separateSections, setSeparateSections] = useState(true);
 
   // Kết quả sau khi xáo
-  const [generatedPackage, setGeneratedPackage] = useState<ShuffledExamPackage | null>(null);
+  const [generatedPackage, setGeneratedPackage] = useState<ShuffledExamPackage | null>(() => {
+    return shuffledPackages && shuffledPackages.length > 0 ? shuffledPackages[0] : null;
+  });
   const [activeTab, setActiveTab] = useState<'matrix' | 'crossRef' | 'detail'>('matrix');
   const [viewCode, setViewCode] = useState<string>('101');
   const [isExporting, setIsExporting] = useState(false);
+
+  // Tự động đồng bộ gói mã đề xáo mới nhất
+  useEffect(() => {
+    if (shuffledPackages && shuffledPackages.length > 0) {
+      setGeneratedPackage(shuffledPackages[0]);
+      if (shuffledPackages[0].codes && shuffledPackages[0].codes.length > 0) {
+        setViewCode(shuffledPackages[0].codes[0].code);
+      }
+    }
+  }, [shuffledPackages]);
 
   const selectedExam = useMemo(() => {
     return exams.find(e => e.id === selectedExamId) || exams[0];

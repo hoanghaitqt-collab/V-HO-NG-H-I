@@ -540,3 +540,167 @@ export async function downloadSampleDocx() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Tải file đề thi gốc mẫu (.docx) đầy đủ 4 phần chuẩn CT GDPT 2018 môn Công nghệ
+ */
+export async function downloadSampleOriginalExamDocx() {
+  const doc = new Document({
+    sections: [
+      {
+        properties: {},
+        children: [
+          new Paragraph({
+            text: 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT',
+            alignment: 'center',
+          }),
+          new Paragraph({
+            text: 'TỔ: VẬT LÍ - CÔNG NGHỆ',
+            alignment: 'center',
+          }),
+          new Paragraph({
+            text: 'ĐỀ THI KIỂM TRA ĐỊNH KÌ MÔN CÔNG NGHỆ 11 (CÔNG NGHỆ CƠ KHÍ)',
+            heading: HeadingLevel.HEADING_1,
+            alignment: 'center',
+            spacing: { before: 100, after: 150 },
+          }),
+          new Paragraph({
+            text: 'Thời gian làm bài: 45 phút (Không kể thời gian phát đề)',
+            alignment: 'center',
+            spacing: { after: 200 },
+          }),
+
+          // PHẦN I
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'PHẦN I. Thí sinh trả lời từ câu 1 đến câu 4. Mỗi câu hỏi thí sinh chỉ chọn một phương án.', bold: true }),
+            ],
+            spacing: { before: 150, after: 100 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 1. ', bold: true }),
+              new TextRun('Vật liệu nào sau đây thuộc nhóm kim loại đen trong cơ khí chế tạo?'),
+            ],
+          }),
+          new Paragraph({ text: 'A. Đồng thanh' }),
+          new Paragraph({ text: 'B. Nhôm đúc' }),
+          new Paragraph({ children: [new TextRun({ text: 'C. Gang xám', bold: true })] }),
+          new Paragraph({ text: 'D. Hợp kim titan' }),
+          new Paragraph({ text: 'Đáp án: C', spacing: { after: 120 } }),
+
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 2. ', bold: true }),
+              new TextRun('Trong động cơ đốt trong 4 kỳ, loại động cơ nào tự bốc cháy hòa khí do nhiệt độ và áp suất cao?'),
+            ],
+          }),
+          new Paragraph({ text: 'A. Động cơ xăng 4 kỳ' }),
+          new Paragraph({ children: [new TextRun({ text: 'B. Động cơ Điêzen (Diesel)', bold: true })] }),
+          new Paragraph({ text: 'C. Động cơ xăng 2 kỳ' }),
+          new Paragraph({ text: 'D. Động cơ Wankel' }),
+          new Paragraph({ text: 'Đáp án: B', spacing: { after: 120 } }),
+
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 3. ', bold: true }),
+              new TextRun('Chi tiết nào có nhiệm vụ đóng mở các cửa nạp và cửa xả đúng thời điểm trong động cơ đốt trong?'),
+            ],
+          }),
+          new Paragraph({ children: [new TextRun({ text: 'A. Cơ cấu phối khí (Xupap)', bold: true })] }),
+          new Paragraph({ text: 'B. Thanh truyền' }),
+          new Paragraph({ text: 'C. Trục khuỷu' }),
+          new Paragraph({ text: 'D. Bánh đà' }),
+          new Paragraph({ text: 'Đáp án: A', spacing: { after: 120 } }),
+
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 4. ', bold: true }),
+              new TextRun('Tỉ số truyền i giữa bánh dẫn Z1 = 20 răng và bánh bị dẫn Z2 = 60 răng là:'),
+            ],
+          }),
+          new Paragraph({ text: 'A. i = 0,2' }),
+          new Paragraph({ children: [new TextRun({ text: 'B. i = 3', bold: true })] }),
+          new Paragraph({ text: 'C. i = 1/3' }),
+          new Paragraph({ text: 'D. i = 4' }),
+          new Paragraph({ text: 'Đáp án: B', spacing: { after: 150 } }),
+
+          // PHẦN II
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'PHẦN II. Thí sinh trả lời từ câu 5 đến câu 6. Trong mỗi ý a), b), c), d), thí sinh chọn Đúng hoặc Sai.', bold: true }),
+            ],
+            spacing: { before: 150, after: 100 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 5. ', bold: true }),
+              new TextRun('Xét chu trình làm việc của động cơ xăng 4 kỳ một xilanh:'),
+            ],
+          }),
+          new Paragraph({ text: 'a) Ở kỳ nạp, piston đi từ ĐCT xuống ĐCD và mở xupap nạp. [Đ]' }),
+          new Paragraph({ text: 'b) Ở kỳ nén, hai xupap đều mở để hòa khí lưu thông. [S]' }),
+          new Paragraph({ text: 'c) Cuối kỳ nén bugi bật tia lửa điện đốt cháy hòa khí nén. [Đ]' }),
+          new Paragraph({ text: 'd) Trục khuỷu quay đúng 4 vòng sau khi hoàn thành 4 kỳ. [S]', spacing: { after: 120 } }),
+
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 6. ', bold: true }),
+              new TextRun('Về các phương pháp gia công cơ khí cắt gọt thông dụng:'),
+            ],
+          }),
+          new Paragraph({ text: 'a) Tiện là phương pháp chủ yếu tạo hình bề mặt tròn xoay. [Đ]' }),
+          new Paragraph({ text: 'b) Phay thường dùng để gia công mặt phẳng, rãnh then và bánh răng. [Đ]' }),
+          new Paragraph({ text: 'c) Khoan chỉ tạo được lỗ tiết diện hình vuông. [S]' }),
+          new Paragraph({ text: 'd) Mài là phương pháp gia công tinh bề mặt sau nhiệt luyện. [Đ]', spacing: { after: 150 } }),
+
+          // PHẦN III
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'PHẦN III. Thí sinh trả lời từ câu 7 đến câu 8. Thí sinh điền đáp số ngắn vào ô tương ứng.', bold: true }),
+            ],
+            spacing: { before: 150, after: 100 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 7. ', bold: true }),
+              new TextRun('Động cơ 4 kỳ có đường kính xilanh D = 80mm và hành trình S = 90mm. Thể tích công tác Vh của một xilanh xấp xỉ bao nhiêu cm³? (Lấy số nguyên)'),
+            ],
+          }),
+          new Paragraph({ text: 'Đáp án ngắn: 452|452cm3', spacing: { after: 120 } }),
+
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 8. ', bold: true }),
+              new TextRun('Bộ truyền đai có đường kính bánh dẫn D1 = 120mm quay n1 = 1400 vòng/phút, bánh bị dẫn D2 = 240mm. Tốc độ quay n2 của bánh bị dẫn là bao nhiêu vòng/phút?'),
+            ],
+          }),
+          new Paragraph({ text: 'Đáp án ngắn: 700|700 vòng/phút', spacing: { after: 150 } }),
+
+          // PHẦN IV
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'PHẦN IV. Câu hỏi tự luận.', bold: true }),
+            ],
+            spacing: { before: 150, after: 100 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Câu 9. ', bold: true }),
+              new TextRun('Nêu quy tắc an toàn lao động khi vận hành máy tiện vạn năng trong xưởng cơ khí thực hành.'),
+            ],
+          }),
+          new Paragraph({ text: 'Tự luận: Đeo kính bảo hộ, mặc quần áo gọn gàng không đeo găng tay khi vận hành trục quay, kiểm tra kẹp chặt phôi và tháo chìa khóa mâm cặp trước khi ấn nút khởi động.', spacing: { after: 150 } }),
+        ],
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'De_Thi_Goc_Mau_Cong_Nghe_11.docx';
+  a.click();
+  URL.revokeObjectURL(url);
+}

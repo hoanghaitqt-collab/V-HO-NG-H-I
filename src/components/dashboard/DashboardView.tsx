@@ -180,7 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenImportModal,
               📝 Tạo đề kiểm tra
             </h3>
             <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
-              Soạn đề theo ma trận chuẩn Bộ GD&ĐT (TN 4 lựa chọn, Đúng/Sai, Trả lời ngắn, Tự luận). Xuất Word (.docx).
+              Soạn đề theo ma trận hoặc tải file đề gốc (.docx, .xlsx, .txt), tự động xáo câu và xáo đáp án. Xuất Word (.docx).
             </p>
             <div className="mt-4 flex items-center text-sm font-semibold text-orange-600 group-hover:translate-x-1 transition-transform">
               Soạn đề mới <ArrowRight className="w-4 h-4 ml-1.5" />
