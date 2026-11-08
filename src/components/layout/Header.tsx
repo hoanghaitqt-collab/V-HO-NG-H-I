@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenStudentTest }) => {
             {settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT'}
           </h2>
           <p className="text-xs text-slate-500 truncate">
-            Giáo viên: {settings.teacherName || 'VÕ HOÀNG HẢI'} · Tổ: Vật lí - Công nghệ · Năm học {settings.schoolYear || '2026 - 2027'}
+            Năm học {settings.schoolYear || '2026 - 2027'}
           </p>
         </div>
       </div>

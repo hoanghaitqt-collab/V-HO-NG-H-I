@@ -20,7 +20,6 @@ import {
   Users,
   CheckCircle2,
   Clock,
-  Sparkles,
   AlertTriangle,
 } from 'lucide-react';
 
@@ -57,10 +56,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenImportModal,
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-blue-100 text-xs font-semibold backdrop-blur-xs mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              Công nghệ THPT 2018 · Tổ: Vật lí - Công nghệ
-            </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
               Kiểm tra, đánh giá môn Công nghệ
             </h1>

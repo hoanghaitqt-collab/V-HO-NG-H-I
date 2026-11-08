@@ -129,7 +129,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({
                 <div>
                   <div className="font-bold uppercase">{settings.schoolName || 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT'}</div>
                   <div className="font-semibold">TỔ: VẬT LÍ - CÔNG NGHỆ</div>
-                  <div className="text-[11px] text-slate-600">Giáo viên: {settings.teacherName || 'VÕ HOÀNG HẢI'}</div>
                   <div className="mt-0.5 font-serif">---------------</div>
                 </div>
                 <div>
