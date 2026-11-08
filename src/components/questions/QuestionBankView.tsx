@@ -188,10 +188,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({ onOpenImport
             }}
             className="w-full sm:w-auto px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
           >
-            <option value="all">Tất cả các lớp</option>
-            <option value="10">Lớp 10 (Thiết kế & Công nghệ)</option>
-            <option value="11">Lớp 11 (Cơ khí & ĐCĐT)</option>
-            <option value="12">Lớp 12 (Điện - Điện tử)</option>
+            <option value="all">Tất cả các khối lớp</option>
+            <option value="10">Khối 10 (Thiết kế & Công nghệ)</option>
+            <option value="11">Khối 11 (Công nghệ Cơ khí)</option>
+            <option value="12">Khối 12 (Điện - Điện tử)</option>
           </select>
 
           {/* Lọc Loại câu */}

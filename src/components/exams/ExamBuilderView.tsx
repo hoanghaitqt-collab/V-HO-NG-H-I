@@ -376,9 +376,9 @@ export const ExamBuilderView: React.FC = () => {
               onChange={e => setGrade(e.target.value as GradeLevel)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             >
-              <option value="10">Lớp 10 (Thiết kế & Công nghệ)</option>
-              <option value="11">Lớp 11 (Cơ khí & Động cơ)</option>
-              <option value="12">Lớp 12 (Điện - Điện tử)</option>
+              <option value="10">Khối 10 (Thiết kế & Công nghệ)</option>
+              <option value="11">Khối 11 (Công nghệ Cơ khí)</option>
+              <option value="12">Khối 12 (Điện - Điện tử)</option>
             </select>
           </div>
 
