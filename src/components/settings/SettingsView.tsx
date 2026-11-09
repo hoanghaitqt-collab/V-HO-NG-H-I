@@ -23,6 +23,7 @@ import {
   Code,
   ShieldCheck,
   DownloadCloud,
+  Trash2,
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -32,6 +33,7 @@ export const SettingsView: React.FC = () => {
     checkConnection,
     triggerSync,
     fullReloadFromSheet,
+    clearAllData,
     syncState,
     lastSyncTime,
     syncQueueCount,
@@ -294,6 +296,30 @@ export const SettingsView: React.FC = () => {
               className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>
+        </div>
+      </div>
+
+      {/* QUẢN LÝ & DỌN DẸP DỮ LIỆU */}
+      <div className="bg-white rounded-2xl border border-rose-200 p-6 shadow-2xs space-y-3">
+        <h3 className="text-base font-bold text-rose-900 flex items-center gap-2">
+          <Trash2 className="w-5 h-5 text-rose-600" />
+          Dọn dẹp & Xóa dữ liệu mẫu
+        </h3>
+        <p className="text-xs text-slate-500">
+          Chức năng này sẽ xóa sạch toàn bộ câu hỏi, đề thi, gói mã đề xáo, bài giao, lớp học, học sinh và kết quả làm bài trên ứng dụng. Giữ nguyên 100% các nút bấm và tính năng của hệ thống.
+        </p>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Bạn có chắc chắn muốn xóa sạch toàn bộ dữ liệu mẫu trong toàn bộ app không?')) {
+                clearAllData();
+              }
+            }}
+            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-xs"
+          >
+            <Trash2 className="w-4 h-4" /> 🗑 Xóa sạch toàn bộ dữ liệu (Reset hệ thống)
+          </button>
         </div>
       </div>
 

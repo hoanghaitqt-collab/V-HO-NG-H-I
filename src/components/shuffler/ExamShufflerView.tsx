@@ -163,11 +163,15 @@ export const ExamShufflerView: React.FC = () => {
               onChange={e => setSelectedExamId(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:outline-hidden"
             >
-              {exams.map(exam => (
-                <option key={exam.id} value={exam.id}>
-                  {exam.title} (Lớp {exam.grade} - {exam.questions.length} câu)
-                </option>
-              ))}
+              {exams.length === 0 ? (
+                <option value="">-- Chưa có đề thi nào (Vui lòng tạo hoặc tải file đề) --</option>
+              ) : (
+                exams.map(exam => (
+                  <option key={exam.id} value={exam.id}>
+                    {exam.title} (Lớp {exam.grade} - {exam.questions.length} câu)
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

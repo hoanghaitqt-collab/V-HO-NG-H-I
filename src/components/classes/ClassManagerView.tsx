@@ -222,6 +222,24 @@ export const ClassManagerView: React.FC = () => {
         </form>
       )}
 
+      {classes.length === 0 && !isAddClassOpen && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center max-w-xl mx-auto shadow-2xs">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
+            <GraduationCap className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 mb-2">Chưa có lớp học nào trong hệ thống</h3>
+          <p className="text-sm text-slate-500 mb-6">
+            Bấm nút bên dưới để tạo lớp học đầu tiên, sau đó bạn có thể thêm học sinh hoặc nhập danh sách học sinh từ file Excel.
+          </p>
+          <button
+            onClick={() => setIsAddClassOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-xs transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Thêm lớp học đầu tiên ngay
+          </button>
+        </div>
+      )}
+
       {/* DANH SÁCH CÁC THẺ LỚP */}
       <div className="flex gap-3 overflow-x-auto pb-2">
         {classes.map(c => {

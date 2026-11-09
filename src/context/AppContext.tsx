@@ -85,8 +85,9 @@ interface AppContextType {
   importStudents: (list: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>[]) => void;
   deleteStudent: (id: string) => void;
 
-  // Cài đặt
+  // Cài đặt & Quản lý dữ liệu
   updateSettings: (newSettings: Partial<AppSettings>) => void;
+  clearAllData: () => void;
 
   // Thông báo (Toast)
   toasts: ToastItem[];
@@ -149,13 +150,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [];
   });
 
-  // Dữ liệu làm việc (In-memory state)
-  const [questions, setQuestions] = useState<Question[]>(DEMO_QUESTIONS);
-  const [exams, setExams] = useState<Exam[]>([DEMO_EXAM]);
+  // Dữ liệu làm việc (In-memory state) - Khởi tạo hoàn toàn sạch sẽ, không có dữ liệu demo
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [shuffledPackages, setShuffledPackages] = useState<ShuffledExamPackage[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([DEMO_ASSIGNMENT]);
-  const [classes, setClasses] = useState<ClassGroup[]>(DEMO_CLASSES);
-  const [students, setStudents] = useState<Student[]>(DEMO_STUDENTS);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [classes, setClasses] = useState<ClassGroup[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
 
   // Trạng thái đồng bộ
@@ -706,6 +707,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [enqueueSyncItem, showToast]
   );
 
+  // Xóa sạch toàn bộ dữ liệu mẫu trong ứng dụng
+  const clearAllData = useCallback(() => {
+    setQuestions([]);
+    setExams([]);
+    setShuffledPackages([]);
+    setAssignments([]);
+    setClasses([]);
+    setStudents([]);
+    setSubmissions([]);
+    setSyncQueue([]);
+    try {
+      localStorage.removeItem(QUEUE_STORAGE_KEY);
+    } catch (e) {}
+    showToast('Đã xóa sạch toàn bộ dữ liệu mẫu trong ứng dụng!', 'success');
+  }, [showToast]);
+
   return (
     <AppContext.Provider
       value={{
@@ -749,6 +766,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importStudents,
         deleteStudent,
         updateSettings,
+        clearAllData,
         toasts,
         showToast,
         removeToast,

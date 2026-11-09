@@ -187,11 +187,15 @@ export const ResultsView: React.FC = () => {
             onChange={e => setSelectedAssignmentId(e.target.value)}
             className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 bg-white shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
           >
-            {assignments.map(a => (
-              <option key={a.id} value={a.id}>
-                {a.title} ({a.code}) - Lớp {a.targetClass}
-              </option>
-            ))}
+            {assignments.length === 0 ? (
+              <option value="">-- Chưa có bài kiểm tra nào --</option>
+            ) : (
+              assignments.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.title} ({a.code}) - Lớp {a.targetClass}
+                </option>
+              ))
+            )}
           </select>
 
           {/* Xuất Excel */}

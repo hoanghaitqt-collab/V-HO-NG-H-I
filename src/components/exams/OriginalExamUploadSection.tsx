@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Upload,
   FileText,
@@ -18,6 +18,9 @@ import {
   Check,
   FileSpreadsheet,
   ArrowRight,
+  ShieldCheck,
+  Sparkles,
+  XCircle,
 } from 'lucide-react';
 import {
   Question,
@@ -104,13 +107,23 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
       setParsedQuestions(result.questions);
       setParseErrors(result.errors);
 
-      // Tự động phân bổ điểm ban đầu theo loại câu
+      // Tự động phân bổ điểm ban đầu chuẩn xác theo cấu trúc 3đ - 4đ - 3đ = 10đ:
+      // Phần 1 (TN): 3.0 điểm
+      // Phần 2 (Đ/S): 4.0 điểm
+      // Phần 3 (TLN / TL): 3.0 điểm
+      const tnList = result.questions.filter(q => q.type === 'TN');
+      const dsList = result.questions.filter(q => q.type === 'DS');
+      const tlnList = result.questions.filter(q => q.type === 'TLN' || q.type === 'TL');
+
       const pointsMap: Record<string, number> = {};
+      const tnPts = tnList.length > 0 ? Number((3.0 / tnList.length).toFixed(2)) : 0.25;
+      const dsPts = dsList.length > 0 ? Number((4.0 / dsList.length).toFixed(2)) : 1.0;
+      const tlnPts = tlnList.length > 0 ? Number((3.0 / tlnList.length).toFixed(2)) : 0.5;
+
       result.questions.forEach(q => {
-        if (q.type === 'TN') pointsMap[q.id] = 0.25;
-        else if (q.type === 'DS') pointsMap[q.id] = 1.0;
-        else if (q.type === 'TLN') pointsMap[q.id] = 0.5;
-        else pointsMap[q.id] = 1.5;
+        if (q.type === 'TN') pointsMap[q.id] = tnPts;
+        else if (q.type === 'DS') pointsMap[q.id] = dsPts;
+        else pointsMap[q.id] = tlnPts;
       });
       setQuestionPoints(pointsMap);
 
@@ -133,31 +146,141 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
     }
   };
 
-  // Cân đối điểm tự động đúng 10 điểm
+  // Cân đối điểm tự động chuẩn Bộ GD&ĐT (Phần 1: 3đ, Phần 2: 4đ, Phần 3: 3đ = 10.0đ)
   const handleNormalizePointsToTen = () => {
     if (parsedQuestions.length === 0) return;
-    const currentSum = parsedQuestions.reduce((acc, q) => acc + (questionPoints[q.id] || 0), 0);
-    if (currentSum <= 0) return;
 
-    const ratio = 10.0 / currentSum;
+    const tnList = parsedQuestions.filter(q => q.type === 'TN');
+    const dsList = parsedQuestions.filter(q => q.type === 'DS');
+    const tlnList = parsedQuestions.filter(q => q.type === 'TLN' || q.type === 'TL');
+
     const newPoints: Record<string, number> = {};
-    let runningTotal = 0;
+    const tnPts = tnList.length > 0 ? Number((3.0 / tnList.length).toFixed(2)) : 0.25;
+    const dsPts = dsList.length > 0 ? Number((4.0 / dsList.length).toFixed(2)) : 1.0;
+    const tlnPts = tlnList.length > 0 ? Number((3.0 / tlnList.length).toFixed(2)) : 0.5;
 
-    parsedQuestions.forEach((q, idx) => {
-      if (idx === parsedQuestions.length - 1) {
-        newPoints[q.id] = Math.max(0.1, Number((10.0 - runningTotal).toFixed(2)));
-      } else {
-        const scaled = Number(((questionPoints[q.id] || 0.25) * ratio).toFixed(2));
-        newPoints[q.id] = scaled;
-        runningTotal += scaled;
-      }
+    let runningTotal = 0;
+    parsedQuestions.forEach(q => {
+      let pts = 0.25;
+      if (q.type === 'TN') pts = tnPts;
+      else if (q.type === 'DS') pts = dsPts;
+      else pts = tlnPts;
+
+      runningTotal += pts;
+      newPoints[q.id] = pts;
     });
+
+    // Bù sai số cho câu cuối cùng để tổng vừa đúng 10.0đ
+    if (parsedQuestions.length > 0) {
+      const lastQ = parsedQuestions[parsedQuestions.length - 1];
+      const diff = Number((10.0 - runningTotal).toFixed(2));
+      if (diff !== 0) {
+        newPoints[lastQ.id] = Number(((newPoints[lastQ.id] || 0) + diff).toFixed(2));
+      }
+    }
+
     setQuestionPoints(newPoints);
   };
 
   const totalPoints = Number(
     parsedQuestions.reduce((acc, q) => acc + (questionPoints[q.id] || 0), 0).toFixed(2)
   );
+
+  // ============================================================
+  // BỘ KIỂM TRA TÍNH HỢP LỆ ĐỀ GỐC THEO CHUẨN BỘ GD&ĐT:
+  // - Phần 1 (3 điểm): Tối thiểu đúng 12 câu TN 4 lựa chọn (≥ 12 câu, 3.0đ)
+  // - Phần 2 (4 điểm): Đúng 4 câu Đúng/Sai, mỗi câu đủ 4 lệnh hỏi a, b, c, d (1.0đ/câu, 4.0đ)
+  // - Phần 3 (3 điểm): Tối thiểu 1 câu (≥ 1 câu, 3.0đ)
+  // - Tổng đề thi: Đúng 10.0 điểm
+  // ============================================================
+  const uploadedValidation = useMemo(() => {
+    const tnQuestions = parsedQuestions.filter(q => q.type === 'TN');
+    const dsQuestions = parsedQuestions.filter(q => q.type === 'DS');
+    const tlnQuestions = parsedQuestions.filter(q => q.type === 'TLN' || q.type === 'TL');
+
+    const s1Pts = Number(tnQuestions.reduce((sum, q) => sum + (questionPoints[q.id] || 0), 0).toFixed(2));
+    const s2Pts = Number(dsQuestions.reduce((sum, q) => sum + (questionPoints[q.id] || 0), 0).toFixed(2));
+    const s3Pts = Number(tlnQuestions.reduce((sum, q) => sum + (questionPoints[q.id] || 0), 0).toFixed(2));
+    const totalPts = Number((s1Pts + s2Pts + s3Pts).toFixed(2));
+
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // 1. Phần 1: Tối thiểu 12 câu TN 4 lựa chọn, 3.0đ
+    const s1CountValid = tnQuestions.length >= 12;
+    if (!s1CountValid) {
+      errors.push(`Phần 1: Tệp gốc có ${tnQuestions.length}/12 câu trắc nghiệm 4 lựa chọn (cần tối thiểu 12 câu).`);
+    }
+    const s1PointsValid = Math.abs(s1Pts - 3.0) < 0.05;
+    if (!s1PointsValid && tnQuestions.length > 0) {
+      warnings.push(`Phần 1: Tổng điểm là ${s1Pts}đ (chuẩn quy định là 3.0 điểm).`);
+    }
+
+    // 2. Phần 2: Đúng 4 câu Đúng/Sai, mỗi câu đủ 4 lệnh hỏi a, b, c, d, 4.0đ
+    const s2CountValid = dsQuestions.length === 4;
+    if (!s2CountValid) {
+      errors.push(`Phần 2: Tệp gốc có ${dsQuestions.length} câu Đúng/Sai (chuẩn quy định là đúng 4 câu).`);
+    }
+
+    const invalidDS: { index: number; subCount: number }[] = [];
+    dsQuestions.forEach((q, idx) => {
+      const subCount = q.subQuestions?.length || 0;
+      if (subCount !== 4) {
+        invalidDS.push({ index: idx + 1, subCount });
+      }
+    });
+
+    const dsSubValid = invalidDS.length === 0;
+    if (!dsSubValid) {
+      invalidDS.forEach(item => {
+        errors.push(`Phần 2 - Câu ${item.index}: Chỉ có ${item.subCount}/4 lệnh hỏi con. Bắt buộc tệp gốc phải có đủ 4 lệnh hỏi a, b, c, d.`);
+      });
+    }
+    const s2PointsValid = Math.abs(s2Pts - 4.0) < 0.05;
+    if (!s2PointsValid && dsQuestions.length > 0) {
+      warnings.push(`Phần 2: Tổng điểm là ${s2Pts}đ (chuẩn quy định là 4.0 điểm).`);
+    }
+
+    // 3. Phần 3: Tối thiểu 1 câu, 3.0đ
+    const s3CountValid = tlnQuestions.length >= 1;
+    if (!s3CountValid) {
+      errors.push(`Phần 3: Cần tối thiểu 1 câu trả lời ngắn hoặc tự luận trong tệp gốc.`);
+    }
+    const s3PointsValid = Math.abs(s3Pts - 3.0) < 0.05;
+    if (!s3PointsValid && tlnQuestions.length > 0) {
+      warnings.push(`Phần 3: Tổng điểm là ${s3Pts}đ (chuẩn quy định là 3.0 điểm).`);
+    }
+
+    // 4. Tổng điểm: Đúng 10.0đ
+    const totalPointsValid = Math.abs(totalPts - 10.0) < 0.05;
+    if (!totalPointsValid) {
+      errors.push(`Tổng điểm đề thi là ${totalPts}đ (yêu cầu chuẩn phải đúng 10.0 điểm).`);
+    }
+
+    const isValid = s1CountValid && s2CountValid && dsSubValid && s3CountValid && totalPointsValid;
+
+    return {
+      isValid,
+      tnCount: tnQuestions.length,
+      s1Pts,
+      s1CountValid,
+      s1PointsValid,
+      dsCount: dsQuestions.length,
+      s2Pts,
+      s2CountValid,
+      s2PointsValid,
+      dsSubValid,
+      invalidDS,
+      tlnCount: tlnQuestions.length,
+      s3Pts,
+      s3CountValid,
+      s3PointsValid,
+      totalPts,
+      totalPointsValid,
+      errors,
+      warnings,
+    };
+  }, [parsedQuestions, questionPoints]);
 
   // Xây dựng Exam object từ các câu hỏi đã parse
   const buildExamObject = (): { exam: Exam; map: Record<string, Question> } => {
@@ -215,6 +338,18 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
       return;
     }
 
+    if (!uploadedValidation.isValid) {
+      const errorMsg = [
+        'CẢNH BÁO: Tệp đề gốc chưa đạt chuẩn cấu trúc Bộ GD&ĐT:',
+        ...uploadedValidation.errors.map((e: string) => `• ${e}`),
+        '',
+        'Bạn có muốn lưu đề này không?',
+      ].join('\n');
+
+      const proceed = confirm(errorMsg);
+      if (!proceed) return;
+    }
+
     const { exam } = buildExamObject();
 
     if (addToBank) {
@@ -229,6 +364,18 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
     if (parsedQuestions.length === 0) {
       alert('Vui lòng tải lên file đề thi gốc hợp lệ trước!');
       return;
+    }
+
+    if (!uploadedValidation.isValid) {
+      const errorMsg = [
+        'CẢNH BÁO: Tệp đề gốc chưa đạt chuẩn cấu trúc Bộ GD&ĐT:',
+        ...uploadedValidation.errors.map((e: string) => `• ${e}`),
+        '',
+        'Bạn có muốn tiếp tục xáo mã đề từ tệp đề gốc này không?',
+      ].join('\n');
+
+      const proceed = confirm(errorMsg);
+      if (!proceed) return;
     }
 
     const { exam, map } = buildExamObject();
@@ -423,11 +570,203 @@ export const OriginalExamUploadSection: React.FC<OriginalExamUploadSectionProps>
               <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-1">
                 <div className="font-bold flex items-center gap-1.5 text-amber-900">
                   <AlertCircle className="w-4 h-4 text-amber-600" />
-                  Có {parseErrors.length} lưu ý khi đọc file đề gốc:
+                  Có {parseErrors.length} lưu ý khi đọc file đề gốc (dữ liệu thật, không bịa đặt):
                 </div>
                 <ul className="list-disc list-inside space-y-0.5 text-[11px] max-h-24 overflow-y-auto">
                   {parseErrors.map((err, i) => (
                     <li key={i}>{err.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* BẢNG KIỂM TRA TÍNH HỢP LỆ CỦA TỆP ĐỀ GỐC THEO CHUẨN BỘ GD&ĐT */}
+          <div className={`rounded-2xl border p-4 sm:p-5 transition-all ${
+            uploadedValidation.isValid
+              ? 'bg-gradient-to-br from-emerald-50 via-teal-50/50 to-green-50 border-emerald-300'
+              : 'bg-gradient-to-br from-amber-50 via-rose-50/40 to-orange-50 border-amber-300'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  uploadedValidation.isValid ? 'bg-emerald-600 text-white shadow-xs' : 'bg-amber-600 text-white shadow-xs'
+                }`}>
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    Kiểm tra tính hợp lệ đề thi gốc (Chuẩn Bộ GD&ĐT 2025/2018)
+                    {uploadedValidation.isValid ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-600 text-white uppercase tracking-wider">
+                        ✓ Đạt chuẩn 100%
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-600 text-white uppercase tracking-wider">
+                        Chưa đạt chuẩn ({uploadedValidation.errors.length} lỗi)
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-xs text-slate-600">
+                    Dữ liệu được trích xuất 100% nguyên bản từ tệp gốc: Phần 1 (≥ 12 câu TN, 3đ) · Phần 2 (đúng 4 câu Đ/S đủ 4 lệnh hỏi, 4đ) · Phần 3 (≥ 1 câu, 3đ) · Tổng 10.0đ.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleNormalizePointsToTen}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition active:scale-98 cursor-pointer"
+                  title="Tự động chuẩn hóa phân bổ 3đ - 4đ - 3đ = 10.0đ"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> ⚡ Chuẩn hóa 3đ - 4đ - 3đ
+                </button>
+              </div>
+            </div>
+
+            {/* GRID 4 TIÊU CHÍ TỆP GỐC */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3.5">
+              {/* Tiêu chí 1: Phần 1 */}
+              <div className={`p-3 rounded-xl border ${
+                uploadedValidation.s1CountValid && uploadedValidation.s1PointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-amber-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Phần I: TN 4 Lựa chọn</span>
+                  {uploadedValidation.s1CountValid && uploadedValidation.s1PointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Đạt</span>
+                  ) : (
+                    <span className="text-amber-700 font-bold flex items-center gap-0.5"><AlertCircle className="w-3.5 h-3.5" /> Chưa đạt</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Số câu (≥ 12):</span>
+                    <strong className={uploadedValidation.s1CountValid ? 'text-emerald-700 font-mono' : 'text-rose-600 font-mono'}>
+                      {uploadedValidation.tnCount} / 12 câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm:</span>
+                    <strong className={uploadedValidation.s1PointsValid ? 'text-emerald-700 font-mono' : 'text-amber-600 font-mono'}>
+                      {uploadedValidation.s1Pts} / 3.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiêu chí 2: Phần 2 */}
+              <div className={`p-3 rounded-xl border ${
+                uploadedValidation.s2CountValid && uploadedValidation.dsSubValid && uploadedValidation.s2PointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-amber-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Phần II: Đúng / Sai</span>
+                  {uploadedValidation.s2CountValid && uploadedValidation.dsSubValid && uploadedValidation.s2PointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Đạt</span>
+                  ) : (
+                    <span className="text-amber-700 font-bold flex items-center gap-0.5"><AlertCircle className="w-3.5 h-3.5" /> Chưa đạt</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Số câu (= 4):</span>
+                    <strong className={uploadedValidation.s2CountValid ? 'text-emerald-700 font-mono' : 'text-rose-600 font-mono'}>
+                      {uploadedValidation.dsCount} / 4 câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Lệnh hỏi (đủ 4 ý a,b,c,d):</span>
+                    <strong className={uploadedValidation.dsSubValid ? 'text-emerald-700' : 'text-rose-600'}>
+                      {uploadedValidation.dsSubValid ? 'Đủ 4 ý' : `${uploadedValidation.invalidDS.length} câu thiếu`}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm:</span>
+                    <strong className={uploadedValidation.s2PointsValid ? 'text-emerald-700 font-mono' : 'text-amber-600 font-mono'}>
+                      {uploadedValidation.s2Pts} / 4.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiêu chí 3: Phần 3 */}
+              <div className={`p-3 rounded-xl border ${
+                uploadedValidation.s3CountValid && uploadedValidation.s3PointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-amber-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Phần III: TL Ngắn / Tự luận</span>
+                  {uploadedValidation.s3CountValid && uploadedValidation.s3PointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Đạt</span>
+                  ) : (
+                    <span className="text-amber-700 font-bold flex items-center gap-0.5"><AlertCircle className="w-3.5 h-3.5" /> Chưa đạt</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Số câu (≥ 1):</span>
+                    <strong className={uploadedValidation.s3CountValid ? 'text-emerald-700 font-mono' : 'text-rose-600 font-mono'}>
+                      {uploadedValidation.tlnCount} câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm:</span>
+                    <strong className={uploadedValidation.s3PointsValid ? 'text-emerald-700 font-mono' : 'text-amber-600 font-mono'}>
+                      {uploadedValidation.s3Pts} / 3.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiêu chí 4: Toàn đề */}
+              <div className={`p-3 rounded-xl border ${
+                uploadedValidation.totalPointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-rose-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Toàn đề gốc</span>
+                  {uploadedValidation.totalPointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Chuẩn</span>
+                  ) : (
+                    <span className="text-rose-700 font-bold flex items-center gap-0.5"><XCircle className="w-3.5 h-3.5" /> Sai điểm</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Tổng số câu:</span>
+                    <strong className="text-slate-800 font-mono">
+                      {parsedQuestions.length} câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm (= 10đ):</span>
+                    <strong className={uploadedValidation.totalPointsValid ? 'text-emerald-700 font-mono font-bold' : 'text-rose-600 font-mono font-bold'}>
+                      {uploadedValidation.totalPts} / 10.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* DANH SÁCH LỖI NẾU CÓ */}
+            {!uploadedValidation.isValid && (
+              <div className="mt-3.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-rose-800">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  Cần lưu ý về cấu trúc tệp đề gốc trước khi xáo mã đề:
+                </div>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-800 font-medium">
+                  {uploadedValidation.errors.map((err: string, i: number) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                  {uploadedValidation.warnings.map((warn: string, i: number) => (
+                    <li key={`uw_${i}`} className="text-amber-800">{warn}</li>
                   ))}
                 </ul>
               </div>

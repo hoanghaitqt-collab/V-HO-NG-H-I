@@ -14,6 +14,9 @@ import {
   Wand2,
   ListCheck,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
   FileText,
   Printer,
   Shuffle,
@@ -25,6 +28,9 @@ import {
   Eye,
   Plus,
   Upload,
+  Info,
+  Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { OriginalExamUploadSection } from './OriginalExamUploadSection';
 
@@ -40,33 +46,26 @@ export const ExamBuilderView: React.FC = () => {
   const [schoolYear, setSchoolYear] = useState(settings.schoolYear || '2026 - 2027');
   const [term, setTerm] = useState<Exam['term']>('giua_ky_1');
 
-  // Điểm từng phần
-  const [s1Points, setS1Points] = useState<number>(3.0); // TN
-  const [s2Points, setS2Points] = useState<number>(2.0); // DS
-  const [s3Points, setS3Points] = useState<number>(2.0); // TLN
-  const [s4Points, setS4Points] = useState<number>(3.0); // TL
+  // Điểm từng phần theo chuẩn Bộ GD&ĐT: Phần 1: 3.0đ, Phần 2: 4.0đ, Phần 3: 3.0đ, Tổng 10.0đ
+  const [s1Points, setS1Points] = useState<number>(3.0); // Phần I: TN 4 lựa chọn (tối thiểu 12 câu, 3.0đ)
+  const [s2Points, setS2Points] = useState<number>(4.0); // Phần II: Trắc nghiệm Đúng/Sai (đúng 4 câu, 4.0đ)
+  const [s3Points, setS3Points] = useState<number>(3.0); // Phần III: Trả lời ngắn (tối thiểu 1 câu, 3.0đ)
+  const [s4Points, setS4Points] = useState<number>(0.0); // Phần IV: Tự luận (tùy chọn)
 
-  // Danh sách câu hỏi đang chọn cho đề
-  const [selectedRefs, setSelectedRefs] = useState<ExamQuestionRef[]>([
-    { questionId: 'demo-q3', points: 1.0, section: 1 },
-    { questionId: 'demo-q4', points: 1.0, section: 1 },
-    { questionId: 'demo-q5', points: 2.0, section: 2 },
-    { questionId: 'demo-q7', points: 2.0, section: 3 },
-    { questionId: 'demo-q10', points: 4.0, section: 4 },
-  ]);
+  // Danh sách câu hỏi đang chọn trong đề thi (Khởi tạo rỗng, sẵn sàng tải đề gốc hoặc bốc ma trận)
+  const [selectedRefs, setSelectedRefs] = useState<ExamQuestionRef[]>([]);
 
   // Bộ lọc thủ công
   const [manualFilterTopic, setManualFilterTopic] = useState('all');
   const [manualFilterLevel, setManualFilterLevel] = useState('all');
   const [manualFilterType, setManualFilterType] = useState('all');
 
-  // Cấu hình Ma trận tự động
+  // Cấu hình Ma trận tự động chuẩn (12 TN: 6 Biết, 4 Hiểu, 2 Vận dụng; 4 Đ/S: 2 Biết, 2 Hiểu; 6 TLN: 6 Vận dụng)
   const [matrixConfig, setMatrixConfig] = useState<
     { topic: string; bietTN: number; hieuTN: number; vdTN: number; bietDS: number; hieuDS: number; tln: number; tl: number }[]
   >([
-    { topic: 'Cơ khí chế tạo & Vật liệu', bietTN: 2, hieuTN: 1, vdTN: 1, bietDS: 0, hieuDS: 1, tln: 0, tl: 1 },
-    { topic: 'Động cơ đốt trong', bietTN: 1, hieuTN: 1, vdTN: 0, bietDS: 0, hieuDS: 1, tln: 1, tl: 0 },
-    { topic: 'Kĩ thuật điện', bietTN: 1, hieuTN: 0, vdTN: 0, bietDS: 0, hieuDS: 0, tln: 1, tl: 0 },
+    { topic: 'Cơ khí chế tạo & Vật liệu', bietTN: 3, hieuTN: 2, vdTN: 1, bietDS: 1, hieuDS: 1, tln: 3, tl: 0 },
+    { topic: 'Động cơ đốt trong', bietTN: 3, hieuTN: 2, vdTN: 1, bietDS: 1, hieuDS: 1, tln: 3, tl: 0 },
   ]);
 
   // Preview modal
@@ -254,7 +253,138 @@ export const ExamBuilderView: React.FC = () => {
     });
   };
 
-  // Cân bằng tổng điểm đúng 10 điểm
+  // ============================================================
+  // BỘ KIỂM TRA TÍNH HỢP LỆ ĐỀ THI THEO CHUẨN BỘ GD&ĐT:
+  // - Phần 1 (3.0 điểm): Tối thiểu đúng 12 câu TN 4 lựa chọn (0.25đ/câu)
+  // - Phần 2 (4.0 điểm): Trắc nghiệm Đúng/Sai có đúng 4 câu, mỗi câu có đủ 4 lệnh hỏi a, b, c, d (1.0đ/câu)
+  // - Phần 3 (3.0 điểm): Tối thiểu 1 câu trả lời ngắn / tự luận
+  // - Tổng toàn đề: Đúng 10.0 điểm
+  // ============================================================
+  const validation = useMemo(() => {
+    const s1Refs = selectedRefs.filter(r => r.section === 1);
+    const s2Refs = selectedRefs.filter(r => r.section === 2);
+    const s3Refs = selectedRefs.filter(r => r.section === 3);
+    const s4Refs = selectedRefs.filter(r => r.section === 4);
+
+    const s1Pts = Number(s1Refs.reduce((sum, r) => sum + (r.points || 0), 0).toFixed(2));
+    const s2Pts = Number(s2Refs.reduce((sum, r) => sum + (r.points || 0), 0).toFixed(2));
+    const s3Pts = Number(s3Refs.reduce((sum, r) => sum + (r.points || 0), 0).toFixed(2));
+    const s4Pts = Number(s4Refs.reduce((sum, r) => sum + (r.points || 0), 0).toFixed(2));
+    const totalPts = Number((s1Pts + s2Pts + s3Pts + s4Pts).toFixed(2));
+
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // 1. Kiểm tra Phần 1: Tối thiểu 12 câu TN 4 lựa chọn, 3.0 điểm
+    const s1CountValid = s1Refs.length >= 12;
+    if (!s1CountValid) {
+      errors.push(`Phần 1: Cần tối thiểu 12 câu trắc nghiệm 4 lựa chọn (hiện có ${s1Refs.length}/12 câu).`);
+    }
+    const s1PointsValid = Math.abs(s1Pts - 3.0) < 0.05;
+    if (!s1PointsValid) {
+      warnings.push(`Phần 1: Tổng điểm hiện tại là ${s1Pts}đ (chuẩn quy định là 3.0 điểm).`);
+    }
+
+    // 2. Kiểm tra Phần 2: Đúng 4 câu Đúng/Sai, mỗi câu có đủ 4 lệnh hỏi a, b, c, d, 4.0 điểm
+    const s2CountValid = s2Refs.length === 4;
+    if (!s2CountValid) {
+      errors.push(`Phần 2: Cần đúng 4 câu trắc nghiệm Đúng/Sai (hiện có ${s2Refs.length} câu).`);
+    }
+
+    // Kiểm tra từng câu Phần 2 xem có đủ 4 lệnh hỏi con không
+    const invalidDSQuestions: { index: number; subCount: number; content: string }[] = [];
+    s2Refs.forEach((ref, idx) => {
+      const q = questionsMap[ref.questionId];
+      const subCount = q?.subQuestions?.length || 0;
+      if (subCount !== 4) {
+        invalidDSQuestions.push({
+          index: idx + 1,
+          subCount,
+          content: q?.content ? q.content.slice(0, 45) + '...' : `Câu ID ${ref.questionId}`,
+        });
+      }
+    });
+
+    const dsSubValid = invalidDSQuestions.length === 0;
+    if (!dsSubValid) {
+      invalidDSQuestions.forEach(item => {
+        errors.push(`Phần 2 - Câu ${item.index}: Chỉ có ${item.subCount}/4 lệnh hỏi. Bắt buộc mỗi câu phải có đủ 4 lệnh hỏi a, b, c, d.`);
+      });
+    }
+
+    const s2PointsValid = Math.abs(s2Pts - 4.0) < 0.05;
+    if (!s2PointsValid) {
+      warnings.push(`Phần 2: Tổng điểm hiện tại là ${s2Pts}đ (chuẩn quy định là 4.0 điểm).`);
+    }
+
+    // 3. Kiểm tra Phần 3: Tối thiểu 1 câu, 3.0 điểm
+    const s3TotalCount = s3Refs.length + s4Refs.length;
+    const s3CountValid = s3TotalCount >= 1;
+    if (!s3CountValid) {
+      errors.push(`Phần 3: Cần tối thiểu 1 câu trả lời ngắn hoặc tự luận (hiện có 0 câu).`);
+    }
+    const s3PointsValid = Math.abs(s3Pts + s4Pts - 3.0) < 0.05;
+    if (!s3PointsValid) {
+      warnings.push(`Phần 3: Tổng điểm hiện tại là ${(s3Pts + s4Pts).toFixed(2)}đ (chuẩn quy định là 3.0 điểm).`);
+    }
+
+    // 4. Kiểm tra tổng điểm toàn đề: Đúng 10.0 điểm
+    const totalPointsValid = Math.abs(totalPts - 10.0) < 0.05;
+    if (!totalPointsValid) {
+      errors.push(`Tổng điểm toàn đề hiện là ${totalPts}đ (yêu cầu chuẩn phải đúng 10.0 điểm).`);
+    }
+
+    const isValid = s1CountValid && s2CountValid && dsSubValid && s3CountValid && totalPointsValid;
+
+    return {
+      isValid,
+      s1Count: s1Refs.length,
+      s1Pts,
+      s1CountValid,
+      s1PointsValid,
+      s2Count: s2Refs.length,
+      s2Pts,
+      s2CountValid,
+      s2PointsValid,
+      dsSubValid,
+      invalidDSQuestions,
+      s3Count: s3TotalCount,
+      s3Pts: Number((s3Pts + s4Pts).toFixed(2)),
+      s3CountValid,
+      s3PointsValid,
+      totalPts,
+      totalPointsValid,
+      errors,
+      warnings,
+    };
+  }, [selectedRefs, questionsMap]);
+
+  // Kiểm tra tính hợp lệ của Ma trận đề thi trước khi bốc ngẫu nhiên
+  const matrixValidation = useMemo(() => {
+    const totalTN = matrixConfig.reduce((sum, r) => sum + (r.bietTN || 0) + (r.hieuTN || 0) + (r.vdTN || 0), 0);
+    const totalDS = matrixConfig.reduce((sum, r) => sum + (r.bietDS || 0) + (r.hieuDS || 0), 0);
+    const totalTLN = matrixConfig.reduce((sum, r) => sum + (r.tln || 0) + (r.tl || 0), 0);
+    const expectedPoints = Number((totalTN * 0.25 + totalDS * 1.0 + totalTLN * 0.5).toFixed(2));
+
+    const isTNValid = totalTN >= 12;
+    const isDSValid = totalDS === 4;
+    const isTLNValid = totalTLN >= 1;
+    const isPointsValid = Math.abs(expectedPoints - 10.0) < 0.05;
+
+    return {
+      totalTN,
+      totalDS,
+      totalTLN,
+      expectedPoints,
+      isTNValid,
+      isDSValid,
+      isTLNValid,
+      isPointsValid,
+      isMatrixValid: isTNValid && isDSValid && isTLNValid,
+    };
+  }, [matrixConfig]);
+
+  // Cân bằng tổng điểm đúng 10 điểm (theo điểm từng phần)
   const handleBalancePoints = () => {
     const s1 = selectedRefs.filter(r => r.section === 1);
     const s2 = selectedRefs.filter(r => r.section === 2);
@@ -272,7 +402,54 @@ export const ExamBuilderView: React.FC = () => {
     setSelectedRefs(updated);
   };
 
-  // Lưu đề thi
+  // Tự động chuẩn hóa điểm theo chuẩn Bộ GD&ĐT:
+  // Phần 1: 3.0đ (0.25đ/câu), Phần 2: 4.0đ (1.0đ/câu), Phần 3: 3.0đ (chia đều), Tổng 10.0đ
+  const handleAutoStandardizePoints = () => {
+    const s1Refs = selectedRefs.filter(r => r.section === 1);
+    const s2Refs = selectedRefs.filter(r => r.section === 2);
+    const s3Refs = selectedRefs.filter(r => r.section === 3);
+    const s4Refs = selectedRefs.filter(r => r.section === 4);
+
+    const s1PerQ = s1Refs.length > 0 ? Number((3.0 / s1Refs.length).toFixed(2)) : 0.25;
+    const s2PerQ = s2Refs.length > 0 ? Number((4.0 / s2Refs.length).toFixed(2)) : 1.0;
+    const p3Count = s3Refs.length + s4Refs.length;
+    const s3PerQ = p3Count > 0 ? Number((3.0 / p3Count).toFixed(2)) : 0.5;
+
+    let runningTotal = 0;
+    const updated = selectedRefs.map((ref, idx) => {
+      let pts = ref.points;
+      if (ref.section === 1) pts = s1PerQ;
+      else if (ref.section === 2) pts = s2PerQ;
+      else if (ref.section === 3 || ref.section === 4) pts = s3PerQ;
+
+      runningTotal += pts;
+      return { ...ref, points: pts };
+    });
+
+    // Bù sai số làm tròn cho câu cuối cùng để tổng chính xác 10.0đ
+    if (updated.length > 0) {
+      const diff = Number((10.0 - runningTotal).toFixed(2));
+      if (diff !== 0) {
+        updated[updated.length - 1].points = Number((updated[updated.length - 1].points + diff).toFixed(2));
+      }
+    }
+
+    setS1Points(3.0);
+    setS2Points(4.0);
+    setS3Points(3.0);
+    setS4Points(0.0);
+    setSelectedRefs(updated);
+  };
+
+  // Nạp ma trận mẫu chuẩn Bộ GD&ĐT (12 TN - 4 Đ/S - 6 TLN = 10 điểm)
+  const handleResetStandardMatrix = () => {
+    setMatrixConfig([
+      { topic: 'Cơ khí chế tạo & Vật liệu', bietTN: 3, hieuTN: 2, vdTN: 1, bietDS: 1, hieuDS: 1, tln: 3, tl: 0 },
+      { topic: 'Động cơ đốt trong', bietTN: 3, hieuTN: 2, vdTN: 1, bietDS: 1, hieuDS: 1, tln: 3, tl: 0 },
+    ]);
+  };
+
+  // Lưu đề thi (kiểm tra tính hợp lệ trước khi lưu)
   const handleSaveExam = () => {
     if (!title.trim()) {
       alert('Vui lòng nhập tên đề kiểm tra!');
@@ -281,6 +458,21 @@ export const ExamBuilderView: React.FC = () => {
     if (selectedRefs.length === 0) {
       alert('Đề thi chưa có câu hỏi nào. Vui lòng chọn hoặc tạo câu hỏi!');
       return;
+    }
+
+    // Kiểm tra cấu trúc chuẩn Bộ GD&ĐT
+    if (!validation.isValid) {
+      const errorMsg = [
+        'CẢNH BÁO: Cấu trúc đề thi chưa đạt chuẩn theo quy định của Bộ GD&ĐT:',
+        ...validation.errors.map(e => `• ${e}`),
+        '',
+        'Bạn có muốn chuẩn hóa điểm ngay hoặc vẫn tiếp tục lưu đề thi này?',
+      ].join('\n');
+
+      const proceed = confirm(errorMsg);
+      if (!proceed) {
+        return;
+      }
     }
 
     const newExam = addExam({
@@ -449,17 +641,32 @@ export const ExamBuilderView: React.FC = () => {
 
         {/* Cài đặt điểm từng phần */}
         <div className="pt-3 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-700">
-              Phân bổ điểm cho 4 phần (Tổng: 10 điểm)
-            </span>
-            <button
-              type="button"
-              onClick={handleBalancePoints}
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" /> Cân đối lại điểm câu hỏi
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div>
+              <span className="text-xs font-bold text-slate-800">
+                Phân bổ điểm đề thi (Chuẩn Bộ GD&ĐT: Phần 1: 3.0đ · Phần 2: 4.0đ · Phần 3: 3.0đ)
+              </span>
+              <span className={`ml-2 text-xs font-bold font-mono px-2 py-0.5 rounded-full ${Number((s1Points + s2Points + s3Points + s4Points).toFixed(2)) === 10 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                Tổng: {Number((s1Points + s2Points + s3Points + s4Points).toFixed(2))} / 10.0đ
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAutoStandardizePoints}
+                className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg flex items-center gap-1 transition"
+                title="Tự động gán: Phần 1 = 3đ, Phần 2 = 4đ, Phần 3 = 3đ"
+              >
+                <Sparkles className="w-3 h-3 text-emerald-600" /> Chuẩn hóa 3đ - 4đ - 3đ
+              </button>
+              <button
+                type="button"
+                onClick={handleBalancePoints}
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-blue-50"
+              >
+                <RefreshCw className="w-3 h-3" /> Cân đối lại câu hỏi
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -696,6 +903,34 @@ export const ExamBuilderView: React.FC = () => {
               </button>
             </div>
 
+            {/* BẢNG KIỂM TRA TÍNH HỢP LỆ MA TRẬN */}
+            <div className={`p-3.5 rounded-xl border text-xs flex flex-wrap items-center justify-between gap-3 ${
+              matrixValidation.isMatrixValid && matrixValidation.isPointsValid
+                ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                : 'bg-amber-50/80 border-amber-200 text-amber-900'
+            }`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" /> Kiểm tra ma trận:
+                </span>
+                <span className={`px-2 py-0.5 rounded font-bold font-mono ${matrixValidation.isTNValid ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                  Phần 1: {matrixValidation.totalTN} / 12 câu TN {matrixValidation.isTNValid ? '✓' : '(Thiếu)'}
+                </span>
+                <span className={`px-2 py-0.5 rounded font-bold font-mono ${matrixValidation.isDSValid ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                  Phần 2: {matrixValidation.totalDS} / 4 câu Đ/S {matrixValidation.isDSValid ? '✓' : '(Cần đúng 4)'}
+                </span>
+                <span className={`px-2 py-0.5 rounded font-bold font-mono ${matrixValidation.isTLNValid ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                  Phần 3: {matrixValidation.totalTLN} câu TLN/TL (≥1) {matrixValidation.isTLNValid ? '✓' : '(Thiếu)'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-700">Dự kiến:</span>
+                <span className={`font-mono font-extrabold px-2 py-0.5 rounded ${matrixValidation.isPointsValid ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>
+                  {matrixValidation.expectedPoints} / 10.0đ
+                </span>
+              </div>
+            </div>
+
             <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-100 text-slate-700 font-bold">
@@ -704,7 +939,8 @@ export const ExamBuilderView: React.FC = () => {
                     <th className="p-3 border-b text-center">TN Biết</th>
                     <th className="p-3 border-b text-center">TN Hiểu</th>
                     <th className="p-3 border-b text-center">TN Vận dụng</th>
-                    <th className="p-3 border-b text-center">Đúng/Sai</th>
+                    <th className="p-3 border-b text-center">Đ/S Biết</th>
+                    <th className="p-3 border-b text-center">Đ/S Hiểu</th>
                     <th className="p-3 border-b text-center">Trả lời ngắn</th>
                     <th className="p-3 border-b text-center">Tự luận</th>
                   </tr>
@@ -767,6 +1003,19 @@ export const ExamBuilderView: React.FC = () => {
                         <input
                           type="number"
                           min="0"
+                          value={row.bietDS}
+                          onChange={e => {
+                            const copy = [...matrixConfig];
+                            copy[idx].bietDS = parseInt(e.target.value) || 0;
+                            setMatrixConfig(copy);
+                          }}
+                          className="w-12 text-center px-1 py-1 border border-slate-200 rounded font-mono font-bold"
+                        />
+                      </td>
+                      <td className="p-2 text-center">
+                        <input
+                          type="number"
+                          min="0"
                           value={row.hieuDS}
                           onChange={e => {
                             const copy = [...matrixConfig];
@@ -808,13 +1057,22 @@ export const ExamBuilderView: React.FC = () => {
               </table>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleResetStandardMatrix}
+                className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5"
+                title="Thiết lập nhanh: 12 TN (3đ), 4 Đ/S (4đ), 6 TLN (3đ)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Nạp ma trận chuẩn 10đ (12 TN - 4 Đ/S - 6 TLN)
+              </button>
+
               <button
                 type="button"
                 onClick={handleGenerateFromMatrix}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5"
               >
-                <Wand2 className="w-4 h-4" /> Bốc câu hỏi tự động theo Ma trận
+                <Wand2 className="w-4 h-4 text-amber-300" /> Bốc câu hỏi tự động theo Ma trận
               </button>
             </div>
           </div>
@@ -899,35 +1157,264 @@ export const ExamBuilderView: React.FC = () => {
         )}
       </div>
 
-      {/* DANH SÁCH CÂU HỎI TRONG ĐỀ THI HIỆN TẠI */}
+      {/* DANH SÁCH CÂU HỎI TRONG ĐỀ THI HIỆN TẠI & BẢNG KIỂM TRA TÍNH HỢP LỆ */}
       {mode !== 'import' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">
-              Danh sách câu hỏi trong đề ({selectedRefs.length} câu)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Tổng điểm hiện tại:{' '}
-              <strong className={currentTotalPoints === 10 ? 'text-emerald-600' : 'text-amber-600'}>
-                {currentTotalPoints} / 10 điểm
-              </strong>
-            </p>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
+          {/* BẢNG KIỂM TRA TÍNH HỢP LỆ THEO CHUẨN BỘ GD&ĐT */}
+          <div className={`rounded-2xl border p-4 sm:p-5 transition-all ${
+            validation.isValid
+              ? 'bg-gradient-to-br from-emerald-50 via-teal-50/50 to-green-50 border-emerald-300'
+              : 'bg-gradient-to-br from-amber-50 via-rose-50/40 to-orange-50 border-amber-300'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  validation.isValid ? 'bg-emerald-600 text-white shadow-xs' : 'bg-amber-600 text-white shadow-xs'
+                }`}>
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    Kiểm tra tính hợp lệ đề thi (Chuẩn Bộ GD&ĐT 2025/2018)
+                    {validation.isValid ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-600 text-white uppercase tracking-wider">
+                        ✓ Đạt chuẩn 100%
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-600 text-white uppercase tracking-wider">
+                        Chưa đạt ({validation.errors.length} tiêu chí)
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-xs text-slate-600">
+                    Quy chuẩn: Phần 1 (3đ) ≥ 12 câu TN · Phần 2 (4đ) đúng 4 câu Đ/S (đủ 4 lệnh hỏi a, b, c, d) · Phần 3 (3đ) ≥ 1 câu · Tổng 10.0đ.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleAutoStandardizePoints}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition active:scale-98 cursor-pointer"
+                  title="Tự động gán điểm chuẩn 3đ - 4đ - 3đ và làm tròn chính xác 10.0 điểm"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> ⚡ Tự động chuẩn hóa điểm 10.0đ
+                </button>
+              </div>
+            </div>
+
+            {/* GRID 4 TIÊU CHÍ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3.5">
+              {/* Tiêu chí 1: Phần 1 (3.0đ) */}
+              <div className={`p-3 rounded-xl border ${
+                validation.s1CountValid && validation.s1PointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-amber-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Phần I: TN 4 Lựa chọn</span>
+                  {validation.s1CountValid && validation.s1PointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Đạt</span>
+                  ) : (
+                    <span className="text-amber-700 font-bold flex items-center gap-0.5"><AlertCircle className="w-3.5 h-3.5" /> Cần sửa</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Số câu (≥ 12):</span>
+                    <strong className={validation.s1CountValid ? 'text-emerald-700 font-mono' : 'text-rose-600 font-mono'}>
+                      {validation.s1Count} / 12 câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm:</span>
+                    <strong className={validation.s1PointsValid ? 'text-emerald-700 font-mono' : 'text-amber-600 font-mono'}>
+                      {validation.s1Pts} / 3.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiêu chí 2: Phần 2 (4.0đ) */}
+              <div className={`p-3 rounded-xl border ${
+                validation.s2CountValid && validation.dsSubValid && validation.s2PointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-amber-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Phần II: Đúng / Sai</span>
+                  {validation.s2CountValid && validation.dsSubValid && validation.s2PointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Đạt</span>
+                  ) : (
+                    <span className="text-amber-700 font-bold flex items-center gap-0.5"><AlertCircle className="w-3.5 h-3.5" /> Cần sửa</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Số câu (= 4):</span>
+                    <strong className={validation.s2CountValid ? 'text-emerald-700 font-mono' : 'text-rose-600 font-mono'}>
+                      {validation.s2Count} / 4 câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Lệnh hỏi (đủ 4 ý a,b,c,d):</span>
+                    <strong className={validation.dsSubValid ? 'text-emerald-700' : 'text-rose-600'}>
+                      {validation.dsSubValid ? 'Đủ 4 ý' : `${validation.invalidDSQuestions.length} câu thiếu`}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm:</span>
+                    <strong className={validation.s2PointsValid ? 'text-emerald-700 font-mono' : 'text-amber-600 font-mono'}>
+                      {validation.s2Pts} / 4.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiêu chí 3: Phần 3 (3.0đ) */}
+              <div className={`p-3 rounded-xl border ${
+                validation.s3CountValid && validation.s3PointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-amber-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Phần III: TL Ngắn / Tự luận</span>
+                  {validation.s3CountValid && validation.s3PointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Đạt</span>
+                  ) : (
+                    <span className="text-amber-700 font-bold flex items-center gap-0.5"><AlertCircle className="w-3.5 h-3.5" /> Cần sửa</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Số câu (≥ 1):</span>
+                    <strong className={validation.s3CountValid ? 'text-emerald-700 font-mono' : 'text-rose-600 font-mono'}>
+                      {validation.s3Count} câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm:</span>
+                    <strong className={validation.s3PointsValid ? 'text-emerald-700 font-mono' : 'text-amber-600 font-mono'}>
+                      {validation.s3Pts} / 3.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiêu chí 4: Toàn đề (10.0đ) */}
+              <div className={`p-3 rounded-xl border ${
+                validation.totalPointsValid
+                  ? 'bg-white border-emerald-200'
+                  : 'bg-white/80 border-rose-300'
+              }`}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-slate-800">Toàn đề thi</span>
+                  {validation.totalPointsValid ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Chuẩn</span>
+                  ) : (
+                    <span className="text-rose-700 font-bold flex items-center gap-0.5"><XCircle className="w-3.5 h-3.5" /> Sai điểm</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Tổng số câu:</span>
+                    <strong className="text-slate-800 font-mono">
+                      {selectedRefs.length} câu
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tổng điểm (= 10đ):</span>
+                    <strong className={validation.totalPointsValid ? 'text-emerald-700 font-mono font-bold' : 'text-rose-600 font-mono font-bold'}>
+                      {validation.totalPts} / 10.0 đ
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* NỘI DUNG LỖI CHI TIẾT NẾU CHƯA ĐẠT */}
+            {!validation.isValid && (
+              <div className="mt-3.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-rose-800">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  Cần điều chỉnh các tiêu chí sau trước khi lưu hoặc in đề thi:
+                </div>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-800 font-medium">
+                  {validation.errors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                  {validation.warnings.map((warn, i) => (
+                    <li key={`w_${i}`} className="text-amber-800">{warn}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleBalancePoints}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
-            >
-              Cân đối lại điểm
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Danh sách câu hỏi trong đề ({selectedRefs.length} câu)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Tổng điểm hiện tại:{' '}
+                <strong className={validation.totalPointsValid ? 'text-emerald-600' : 'text-amber-600'}>
+                  {currentTotalPoints} / 10.0 điểm
+                </strong>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAutoStandardizePoints}
+                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Chuẩn hóa điểm 10.0đ
+              </button>
+              <button
+                type="button"
+                onClick={handleBalancePoints}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+              >
+                Cân đối lại điểm
+              </button>
+            </div>
           </div>
-        </div>
 
         {selectedRefs.length === 0 ? (
-          <div className="py-8 text-center text-sm text-slate-400">
-            Chưa có câu hỏi nào trong đề. Vui lòng bấm tạo theo Ma trận hoặc chọn thủ công.
+          <div className="py-10 px-6 text-center bg-slate-50/80 rounded-2xl border-2 border-dashed border-slate-200 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+              <FileText className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800">Chưa có câu hỏi nào trong đề thi</h4>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Bạn có thể tải file đề gốc (.docx) có sẵn để tạo và xáo đề tự động, hoặc tạo đề theo Ma trận, hoặc tự chọn từng câu từ ngân hàng câu hỏi.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setMode('import')}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-98"
+              >
+                <Upload className="w-3.5 h-3.5" /> 📂 Tải file đề gốc ngay
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('matrix')}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-98"
+              >
+                <Wand2 className="w-3.5 h-3.5" /> ✨ Tạo theo Ma trận
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('manual')}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-98"
+              >
+                <ListCheck className="w-3.5 h-3.5" /> 📋 Chọn thủ công
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -1031,8 +1518,13 @@ export const ExamBuilderView: React.FC = () => {
           Các đề thi đã lưu ({exams.length} đề)
         </h3>
 
-        <div className="divide-y divide-slate-100">
-          {exams.map(exam => (
+        {exams.length === 0 ? (
+          <div className="py-8 text-center text-sm text-slate-400">
+            Chưa có đề thi nào được lưu trong hệ thống. Hãy tải file đề gốc hoặc soạn đề thi mới bằng các nút phía trên.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {exams.map(exam => (
             <div key={exam.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -1084,7 +1576,8 @@ export const ExamBuilderView: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* MODAL XEM TRƯỚC ĐỀ THI */}

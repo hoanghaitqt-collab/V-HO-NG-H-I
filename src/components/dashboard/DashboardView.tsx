@@ -115,10 +115,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenImportModal,
             </div>
             <div>
               <h4 className="font-bold text-amber-900 text-sm">
-                Bạn đang sử dụng Dữ liệu DEMO dùng thử
+                Bạn đang sử dụng bộ nhớ trình duyệt (Chưa kết nối Google Sheet)
               </h4>
               <p className="text-xs text-amber-700 mt-0.5">
-                Dữ liệu chỉ lưu tạm trên bộ nhớ trình duyệt. Hãy dán URL Web App Google Apps Script trong phần Cài đặt để lưu vĩnh viễn trên Google Sheet của bạn.
+                Dữ liệu hiện được lưu trên bộ nhớ trình duyệt của bạn. Hãy dán URL Web App Google Apps Script trong phần Cài đặt để đồng bộ và sao lưu an toàn trên Google Sheet.
               </p>
             </div>
           </div>

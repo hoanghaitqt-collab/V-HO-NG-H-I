@@ -5,7 +5,7 @@
 
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { Question, GradeLevel, CognitiveLevel, QuestionType, SubQuestionDS } from '../types';
 
 export interface ParseResult {
@@ -16,6 +16,7 @@ export interface ParseResult {
 
 /**
  * Phân tích file Excel (.xlsx, .xls, .csv)
+ * YÊU CẦU: Chỉ lấy dữ liệu xác thực từ file gốc, không được bịa đặt.
  */
 export async function parseExcelFile(
   file: File,
@@ -44,10 +45,10 @@ export async function parseExcelFile(
     level: headerRow.findIndex((h: string) => h.includes('mức độ') || h.includes('level')),
     type: headerRow.findIndex((h: string) => h.includes('loại') || h.includes('dạng') || h.includes('type')),
     content: headerRow.findIndex((h: string) => h.includes('nội dung') || h.includes('câu hỏi') || h.includes('content')),
-    optA: headerRow.findIndex((h: string) => h === 'a' || h.includes('đáp án a') || h.includes('phương án a')),
-    optB: headerRow.findIndex((h: string) => h === 'b' || h.includes('đáp án b') || h.includes('phương án b')),
-    optC: headerRow.findIndex((h: string) => h === 'c' || h.includes('đáp án c') || h.includes('phương án c')),
-    optD: headerRow.findIndex((h: string) => h === 'd' || h.includes('đáp án d') || h.includes('phương án d')),
+    optA: headerRow.findIndex((h: string) => h === 'a' || h.includes('đáp án a') || h.includes('phương án a') || h.includes('ý a')),
+    optB: headerRow.findIndex((h: string) => h === 'b' || h.includes('đáp án b') || h.includes('phương án b') || h.includes('ý b')),
+    optC: headerRow.findIndex((h: string) => h === 'c' || h.includes('đáp án c') || h.includes('phương án c') || h.includes('ý c')),
+    optD: headerRow.findIndex((h: string) => h === 'd' || h.includes('đáp án d') || h.includes('phương án d') || h.includes('ý d')),
     correct: headerRow.findIndex((h: string) => h.includes('đúng') || h.includes('đáp án đúng') || h.includes('key')),
     explanation: headerRow.findIndex((h: string) => h.includes('lời giải') || h.includes('gợi ý') || h.includes('giải thích')),
     points: headerRow.findIndex((h: string) => h.includes('điểm') || h.includes('point')),
@@ -66,17 +67,17 @@ export async function parseExcelFile(
     const content = colIndex.content >= 0 ? String(row[colIndex.content] || '').trim() : String(row[4] || '').trim();
 
     if (!content) {
-      errors.push({ line: lineNum, message: 'Dòng này thiếu nội dung câu hỏi.' });
+      errors.push({ line: lineNum, message: `Dòng ${lineNum}: Thiếu nội dung câu hỏi trong file gốc.` });
       continue;
     }
 
-    // Xác định mức độ
+    // Xác định mức độ nhận thức
     let rawLevel = colIndex.level >= 0 ? String(row[colIndex.level] || '').trim().toLowerCase() : '';
     let level: CognitiveLevel = 'Biet';
     if (rawLevel.includes('vận') || rawLevel.includes('vd')) level = 'VanDung';
     else if (rawLevel.includes('hiểu') || rawLevel.includes('th')) level = 'Hieu';
 
-    // Xác định loại câu
+    // Xác định loại câu hỏi
     let rawType = colIndex.type >= 0 ? String(row[colIndex.type] || '').trim().toUpperCase() : 'TN';
     let type: QuestionType = 'TN';
     if (rawType.includes('ĐS') || rawType.includes('DS') || rawType.includes('ĐÚNG')) type = 'DS';
@@ -93,16 +94,16 @@ export async function parseExcelFile(
     const optD = colIndex.optD >= 0 ? String(row[colIndex.optD] || '').trim() : '';
     const correctRaw = colIndex.correct >= 0 ? String(row[colIndex.correct] || '').trim() : '';
     const explanation = colIndex.explanation >= 0 ? String(row[colIndex.explanation] || '').trim() : '';
-    const points = colIndex.points >= 0 && Number(row[colIndex.points]) ? Number(row[colIndex.points]) : (type === 'DS' ? 1.0 : 0.25);
+    const points = colIndex.points >= 0 && Number(row[colIndex.points]) ? Number(row[colIndex.points]) : (type === 'DS' ? 1.0 : type === 'TN' ? 0.25 : 0.5);
 
     if (type === 'TN') {
       const correctOpt = correctRaw.toUpperCase().charAt(0) as 'A' | 'B' | 'C' | 'D';
       if (!['A', 'B', 'C', 'D'].includes(correctOpt)) {
-        errors.push({ line: lineNum, message: `Câu hỏi trắc nghiệm thiếu hoặc đáp án đúng không hợp lệ: "${correctRaw}". Vui lòng điền A, B, C hoặc D.` });
+        errors.push({ line: lineNum, message: `Dòng ${lineNum}: Câu trắc nghiệm thiếu hoặc đáp án đúng không hợp lệ: "${correctRaw}". File gốc cần ghi A, B, C hoặc D.` });
         continue;
       }
-      if (!optA || !optB) {
-        errors.push({ line: lineNum, message: 'Câu hỏi trắc nghiệm cần ít nhất phương án A và B.' });
+      if (!optA || !optB || !optC || !optD) {
+        errors.push({ line: lineNum, message: `Dòng ${lineNum}: Câu hỏi trắc nghiệm cần đủ 4 phương án A, B, C, D trong file gốc.` });
         continue;
       }
 
@@ -116,28 +117,35 @@ export async function parseExcelFile(
         options: { A: optA, B: optB, C: optC, D: optD },
         correctOption: correctOpt,
         explanation,
-        points,
+        points: points || 0.25,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
     } else if (type === 'DS') {
-      // Đúng sai: nếu các cột A, B, C, D chứa nội dung 4 ý, và cột Đúng chứa định dạng vd "Đ-S-Đ-Đ" hoặc "T-F-T-T"
-      const subContents = [optA, optB, optC, optD].filter(Boolean);
-      const isCorrectList: boolean[] = [];
+      // Đúng/Sai: CẦN ĐỦ 4 LỆNH HỎI a, b, c, d
+      if (!optA || !optB || !optC || !optD) {
+        errors.push({ line: lineNum, message: `Dòng ${lineNum}: Câu hỏi Đúng/Sai thiếu phương án (chuẩn cần đủ 4 ý a, b, c, d ở các cột tương ứng).` });
+        continue;
+      }
 
-      if (correctRaw.includes('-') || correctRaw.includes(',')) {
-        const parts = correctRaw.split(/[-,\s]+/).map(p => p.trim().toUpperCase());
-        parts.forEach(p => isCorrectList.push(p === 'Đ' || p === 'D' || p === 'T' || p === 'TRUE' || p === 'ĐÚNG'));
+      // Phân tích đáp án Đúng/Sai từ chuỗi correctRaw (VD: Đ-S-Đ-Đ hoặc T-F-T-T hoặc 1-0-1-1)
+      const isCorrectList: boolean[] = [];
+      const parts = correctRaw.split(/[-,\s./]+/).map(p => p.trim().toUpperCase()).filter(Boolean);
+
+      if (parts.length >= 4) {
+        parts.slice(0, 4).forEach(p => {
+          isCorrectList.push(p === 'Đ' || p === 'D' || p === 'T' || p === 'TRUE' || p === 'ĐÚNG' || p === '1');
+        });
       } else {
-        // Mặc định
-        isCorrectList.push(true, false, true, false);
+        errors.push({ line: lineNum, message: `Dòng ${lineNum}: Câu Đúng/Sai thiếu định dạng đáp án 4 ý (VD file gốc cần ghi rõ: "Đ-S-Đ-Đ" hoặc "T-F-T-T").` });
+        continue;
       }
 
       const subQuestions: SubQuestionDS[] = [
-        { id: `sub_a_${r}`, label: 'a', content: optA || 'Ý phát biểu a', isCorrect: isCorrectList[0] ?? true },
-        { id: `sub_b_${r}`, label: 'b', content: optB || 'Ý phát biểu b', isCorrect: isCorrectList[1] ?? false },
-        { id: `sub_c_${r}`, label: 'c', content: optC || 'Ý phát biểu c', isCorrect: isCorrectList[2] ?? true },
-        { id: `sub_d_${r}`, label: 'd', content: optD || 'Ý phát biểu d', isCorrect: isCorrectList[3] ?? false },
+        { id: `sub_a_${r}`, label: 'a', content: optA, isCorrect: isCorrectList[0] },
+        { id: `sub_b_${r}`, label: 'b', content: optB, isCorrect: isCorrectList[1] },
+        { id: `sub_c_${r}`, label: 'c', content: optC, isCorrect: isCorrectList[2] },
+        { id: `sub_d_${r}`, label: 'd', content: optD, isCorrect: isCorrectList[3] },
       ];
 
       questions.push({
@@ -149,11 +157,15 @@ export async function parseExcelFile(
         content,
         subQuestions,
         explanation,
-        points,
+        points: points || 1.0,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
     } else if (type === 'TLN') {
+      if (!correctRaw) {
+        errors.push({ line: lineNum, message: `Dòng ${lineNum}: Câu hỏi trả lời ngắn thiếu đáp án chuẩn trong file gốc.` });
+        continue;
+      }
       questions.push({
         id: `q_ex_${Date.now()}_${r}`,
         grade,
@@ -161,9 +173,9 @@ export async function parseExcelFile(
         level,
         type: 'TLN',
         content,
-        shortAnswer: correctRaw || '',
+        shortAnswer: correctRaw,
         explanation,
-        points,
+        points: points || 0.5,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
@@ -177,7 +189,7 @@ export async function parseExcelFile(
         content,
         essayGuide: correctRaw || explanation || '',
         explanation,
-        points: points || 1.0,
+        points: points || 1.5,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
@@ -193,6 +205,7 @@ export async function parseExcelFile(
 
 /**
  * Phân tích file Word (.docx)
+ * YÊU CẦU: Chỉ lấy dữ liệu xác thực từ file gốc, không được bịa đặt.
  */
 export async function parseDocxFile(
   file: File,
@@ -209,13 +222,18 @@ export async function parseDocxFile(
 
 /**
  * Phân tích chuỗi Text hoặc HTML từ Word/TXT
+ * Hỗ trợ nhận diện chuẩn 3 phần cấu trúc đề thi Bộ GD&ĐT:
+ * - PHẦN I: Trắc nghiệm 4 lựa chọn (TN)
+ * - PHẦN II: Trắc nghiệm Đúng/Sai (DS, 4 lệnh hỏi a, b, c, d)
+ * - PHẦN III: Trắc nghiệm trả lời ngắn (TLN)
+ * - PHẦN IV: Tự luận (TL)
  */
 export function parseTextOrHtmlContent(
   textOrHtml: string,
   defaultGrade: GradeLevel = '11',
   defaultTopic: string = 'Công nghệ THPT'
 ): ParseResult {
-  // Chuẩn hóa xuống dạng plain text có đánh dấu
+  // Chuẩn hóa xuống dạng plain text có đánh dấu định dạng in đậm / gạch chân
   let text = textOrHtml
     .replace(/<strong[^>]*>(.*?)<\/strong>/gi, ' **$1** ')
     .replace(/<b[^>]*>(.*?)<\/b>/gi, ' **$1** ')
@@ -224,29 +242,79 @@ export function parseTextOrHtmlContent(
     .replace(/<\/p>/gi, '\n')
     .replace(/<br\s*[\/]?>/gi, '\n')
     .replace(/&nbsp;/gi, ' ')
-    .replace(/<[^>]+>/g, '');
+    .replace(/<[^>]+>/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
 
   const questions: Question[] = [];
   const errors: { line: number; message: string }[] = [];
 
-  // Tách văn bản thành các khối câu hỏi theo mẫu: Câu 1, Câu 2, Bài 1,...
-  const questionRegex = /(?:^|\n)(?:Câu|Bài)\s+(\d+)[:.]\s*([\s\S]*?)(?=(?:\n(?:Câu|Bài)\s+\d+[:.]|$))/gi;
-  let match;
-  let count = 0;
+  // Tách văn bản theo các PHẦN (nếu văn bản có đề mục PHẦN I, PHẦN II, PHẦN III)
+  const sectionSplitRegex = /(?:^|\n)\s*(?:PHẦN|Phần)\s+(I{1,3}|IV|[1-4])[:.\s]/i;
+  const hasSections = sectionSplitRegex.test(text);
 
-  while ((match = questionRegex.exec(text)) !== null) {
-    count++;
-    const qNum = match[1];
-    const qBody = match[2].trim();
+  interface RawSection {
+    sectionNumber: 1 | 2 | 3 | 4;
+    content: string;
+  }
 
-    try {
-      // Phân tích xem đây là câu Đúng/Sai, Trả lời ngắn, hay Trắc nghiệm 4 lựa chọn
-      const isTrueFalse = /^[a-d]\s*[\).]/im.test(qBody) && (qBody.includes('[Đ]') || qBody.includes('[S]') || qBody.includes('(Đ)') || qBody.includes('(S)'));
-      const isShortAnswer = /(?:Đáp án ngắn|Trả lời ngắn|Đáp số)[:.]/i.test(qBody);
-      const isEssay = /(?:Tự luận|Hướng dẫn chấm)[:.]/i.test(qBody);
+  const sections: RawSection[] = [];
+
+  if (hasSections) {
+    const rawParts = text.split(/(?:^|\n)\s*(?=(?:PHẦN|Phần)\s+(?:I{1,3}|IV|[1-4])[:.\s])/i);
+    rawParts.forEach(part => {
+      const trimmed = part.trim();
+      if (!trimmed) return;
+
+      const headerMatch = trimmed.match(/^(?:PHẦN|Phần)\s+(I{1,3}|IV|[1-4])[:.\s]/i);
+      if (headerMatch) {
+        const secLabel = headerMatch[1].toUpperCase();
+        let secNum: 1 | 2 | 3 | 4 = 1;
+        if (secLabel === 'I' || secLabel === '1') secNum = 1;
+        else if (secLabel === 'II' || secLabel === '2') secNum = 2;
+        else if (secLabel === 'III' || secLabel === '3') secNum = 3;
+        else if (secLabel === 'IV' || secLabel === '4') secNum = 4;
+
+        sections.push({ sectionNumber: secNum, content: trimmed });
+      }
+    });
+  }
+
+  // Nếu không có chia phần rõ ràng, coi toàn bộ là 1 khối duy nhất
+  if (sections.length === 0) {
+    sections.push({ sectionNumber: 1, content: text });
+  }
+
+  let globalCount = 0;
+
+  sections.forEach(section => {
+    // Tách các câu hỏi trong phần: Câu 1, Câu 2...
+    const questionRegex = /(?:^|\n)(?:Câu|Bài)\s+(\d+)[:.]\s*([\s\S]*?)(?=(?:\n(?:Câu|Bài)\s+\d+[:.]|$))/gi;
+    let match;
+
+    while ((match = questionRegex.exec(section.content)) !== null) {
+      globalCount++;
+      const qNum = match[1];
+      const qBody = match[2].trim();
+
+      if (!qBody) {
+        errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} không có nội dung trong file gốc.` });
+        continue;
+      }
+
+      // Xác định loại câu hỏi theo Section hoặc nội dung
+      let forceType: QuestionType | null = null;
+      if (section.sectionNumber === 1) forceType = 'TN';
+      else if (section.sectionNumber === 2) forceType = 'DS';
+      else if (section.sectionNumber === 3) forceType = 'TLN';
+      else if (section.sectionNumber === 4) forceType = 'TL';
+
+      const isTrueFalse = forceType === 'DS' || (/^[a-d]\s*[\).]/im.test(qBody) && (qBody.includes('[Đ]') || qBody.includes('[S]') || qBody.includes('(Đ)') || qBody.includes('(S)')));
+      const isShortAnswer = forceType === 'TLN' || /(?:Đáp án ngắn|Trả lời ngắn|Đáp số)[:.]/i.test(qBody);
+      const isEssay = forceType === 'TL' || /(?:Tự luận|Hướng dẫn chấm)[:.]/i.test(qBody);
 
       if (isTrueFalse) {
-        // Dạng Đúng / Sai
+        // --- DẠNG ĐÚNG / SAI (4 Ý a, b, c, d) ---
         const lines = qBody.split('\n').map(l => l.trim()).filter(Boolean);
         const subQuestions: SubQuestionDS[] = [];
         let mainContent = '';
@@ -256,41 +324,71 @@ export function parseTextOrHtmlContent(
           if (subMatch) {
             const label = subMatch[1].toLowerCase() as 'a' | 'b' | 'c' | 'd';
             let subText = subMatch[2];
-            const isCorrect = /\[(Đ|Đúng|T|True)\]|\((Đ|Đúng|T|True)\)/i.test(subText);
-            subText = subText.replace(/\[(?:Đ|S|Đúng|Sai|T|F)\]|\((?:Đ|S|Đúng|Sai|T|F)\)/gi, '').trim();
-            subQuestions.push({
-              id: `sq_${qNum}_${label}`,
-              label,
-              content: subText,
-              isCorrect,
-            });
+            const hasTrue = /\[(Đ|Đúng|T|True|1)\]|\((Đ|Đúng|T|True|1)\)/i.test(subText);
+            const hasFalse = /\[(S|Sai|F|False|0)\]|\((S|Sai|F|False|0)\)/i.test(subText);
+
+            if (!hasTrue && !hasFalse) {
+              errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} ý ${label}) thiếu đánh dấu [Đ] hoặc [S] trong file gốc.` });
+            }
+
+            subText = subText.replace(/\[(?:Đ|S|Đúng|Sai|T|F|1|0)\]|\((?:Đ|S|Đúng|Sai|T|F|1|0)\)/gi, '').replace(/\*\*/g, '').replace(/__/g, '').trim();
+
+            if (subText) {
+              subQuestions.push({
+                id: `sq_${qNum}_${label}`,
+                label,
+                content: subText,
+                isCorrect: hasTrue,
+              });
+            }
           } else if (subQuestions.length === 0) {
             mainContent += (mainContent ? ' ' : '') + line;
           }
         }
 
-        if (subQuestions.length >= 2) {
-          questions.push({
-            id: `q_txt_${Date.now()}_${count}`,
-            grade: defaultGrade,
-            topic: defaultTopic,
-            level: 'Hieu',
-            type: 'DS',
-            content: mainContent || `Câu hỏi Đúng/Sai số ${qNum}`,
-            subQuestions,
-            points: 1.0,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          });
+        if (!mainContent) {
+          errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} dạng Đúng/Sai thiếu nội dung câu hỏi dẫn đề trong file gốc.` });
+          continue;
         }
-      } else if (isShortAnswer) {
-        // Dạng Trả lời ngắn
-        const ansMatch = qBody.match(/(?:Đáp án ngắn|Trả lời ngắn|Đáp số)[:.]\s*(.*)$/i);
-        const shortAns = ansMatch ? ansMatch[1].trim() : '';
-        const mainContent = qBody.replace(/(?:Đáp án ngắn|Trả lời ngắn|Đáp số)[:.]\s*.*$/i, '').trim();
+
+        if (subQuestions.length < 4) {
+          errors.push({
+            line: Number(qNum) || globalCount,
+            message: `Câu ${qNum} dạng Đúng/Sai chỉ có ${subQuestions.length}/4 lệnh hỏi trong file gốc (chuẩn Bộ GD&ĐT yêu cầu đúng 4 ý a, b, c, d).`,
+          });
+          continue;
+        }
 
         questions.push({
-          id: `q_txt_${Date.now()}_${count}`,
+          id: `q_txt_${Date.now()}_${globalCount}`,
+          grade: defaultGrade,
+          topic: defaultTopic,
+          level: 'Hieu',
+          type: 'DS',
+          content: mainContent,
+          subQuestions: subQuestions.slice(0, 4),
+          points: 1.0,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      } else if (isShortAnswer && !isEssay) {
+        // --- DẠNG TRẢ LỜI NGẮN (TLN) ---
+        const ansMatch = qBody.match(/(?:Đáp án ngắn|Trả lời ngắn|Đáp số|Đáp án)[:.]\s*(.*)$/im);
+        const shortAns = ansMatch ? ansMatch[1].replace(/\*\*/g, '').replace(/__/g, '').trim() : '';
+        const mainContent = qBody.replace(/(?:Đáp án ngắn|Trả lời ngắn|Đáp số|Đáp án)[:.]\s*.*$/im, '').replace(/\*\*/g, '').replace(/__/g, '').trim();
+
+        if (!mainContent) {
+          errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} dạng trả lời ngắn thiếu nội dung đề bài trong file gốc.` });
+          continue;
+        }
+
+        if (!shortAns) {
+          errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} dạng trả lời ngắn thiếu đáp số chuẩn trong file gốc (thêm "Đáp án ngắn: ...").` });
+          continue;
+        }
+
+        questions.push({
+          id: `q_txt_${Date.now()}_${globalCount}`,
           grade: defaultGrade,
           topic: defaultTopic,
           level: 'VanDung',
@@ -302,13 +400,18 @@ export function parseTextOrHtmlContent(
           updatedAt: Date.now(),
         });
       } else if (isEssay) {
-        // Dạng Tự luận
-        const guideMatch = qBody.match(/(?:Tự luận|Hướng dẫn chấm)[:.]\s*(.*)$/i);
+        // --- DẠNG TỰ LUẬN ---
+        const guideMatch = qBody.match(/(?:Tự luận|Hướng dẫn chấm|Đáp án)[:.]\s*(.*)$/im);
         const essayGuide = guideMatch ? guideMatch[1].trim() : '';
-        const mainContent = qBody.replace(/(?:Tự luận|Hướng dẫn chấm)[:.]\s*.*$/i, '').trim();
+        const mainContent = qBody.replace(/(?:Tự luận|Hướng dẫn chấm|Đáp án)[:.]\s*.*$/im, '').trim();
+
+        if (!mainContent) {
+          errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} tự luận thiếu nội dung câu hỏi trong file gốc.` });
+          continue;
+        }
 
         questions.push({
-          id: `q_txt_${Date.now()}_${count}`,
+          id: `q_txt_${Date.now()}_${globalCount}`,
           grade: defaultGrade,
           topic: defaultTopic,
           level: 'VanDung',
@@ -320,21 +423,19 @@ export function parseTextOrHtmlContent(
           updatedAt: Date.now(),
         });
       } else {
-        // Dạng trắc nghiệm 4 lựa chọn (A, B, C, D)
-        // Tìm dòng "Đáp án: B" hoặc dấu in đậm **A.** / __A.__
+        // --- DẠNG TRẮC NGHIỆM 4 LỰA CHỌN (TN) ---
         let correctOpt: 'A' | 'B' | 'C' | 'D' | undefined;
         const ansLineMatch = qBody.match(/(?:Đáp án|Đáp án đúng|Chọn)[:.]\s*([A-D])/i);
         if (ansLineMatch) {
           correctOpt = ansLineMatch[1].toUpperCase() as any;
         }
 
-        // Tách 4 phương án A, B, C, D
         const optMatchA = qBody.match(/(?:^|\n)\s*(?:\*\*|__)?A\s*[\).]\s*(.*?)(?=(?:\n\s*(?:\*\*|__)?B\s*[\).]|Đáp án|$))/s);
         const optMatchB = qBody.match(/(?:^|\n)\s*(?:\*\*|__)?B\s*[\).]\s*(.*?)(?=(?:\n\s*(?:\*\*|__)?C\s*[\).]|Đáp án|$))/s);
         const optMatchC = qBody.match(/(?:^|\n)\s*(?:\*\*|__)?C\s*[\).]\s*(.*?)(?=(?:\n\s*(?:\*\*|__)?D\s*[\).]|Đáp án|$))/s);
         const optMatchD = qBody.match(/(?:^|\n)\s*(?:\*\*|__)?D\s*[\).]\s*(.*?)(?=(?:\n\s*Đáp án|$))/s);
 
-        // Kiểm tra xem phương án nào được in đậm / gạch chân
+        // Nhận diện đáp án đúng qua in đậm **A.** hoặc gạch chân __A.__
         if (!correctOpt) {
           if (optMatchA && (optMatchA[0].includes('**A') || optMatchA[0].includes('__A'))) correctOpt = 'A';
           else if (optMatchB && (optMatchB[0].includes('**B') || optMatchB[0].includes('__B'))) correctOpt = 'B';
@@ -342,7 +443,6 @@ export function parseTextOrHtmlContent(
           else if (optMatchD && (optMatchD[0].includes('**D') || optMatchD[0].includes('__D'))) correctOpt = 'D';
         }
 
-        // Nội dung câu hỏi là phần trước đáp án A
         const splitA = qBody.split(/(?:^|\n)\s*(?:\*\*|__)?A\s*[\).]/);
         const content = splitA[0].replace(/\*\*/g, '').replace(/__/g, '').trim();
 
@@ -351,39 +451,47 @@ export function parseTextOrHtmlContent(
         const optC = optMatchC ? optMatchC[1].replace(/\*\*/g, '').replace(/__/g, '').trim() : '';
         const optD = optMatchD ? optMatchD[1].replace(/\*\*/g, '').replace(/__/g, '').trim() : '';
 
-        // Tách lời giải nếu có
         let explanation = '';
         const expMatch = qBody.match(/(?:Lời giải|Hướng dẫn|Giải thích)[:.]\s*(.*)$/is);
         if (expMatch) explanation = expMatch[1].trim();
 
+        if (!content) {
+          errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} thiếu nội dung câu hỏi trong file gốc.` });
+          continue;
+        }
+
+        if (!optA || !optB || !optC || !optD) {
+          errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} trắc nghiệm thiếu phương án lựa chọn trong file gốc (cần đủ A, B, C, D).` });
+          continue;
+        }
+
         if (!correctOpt) {
-          errors.push({ line: Number(qNum), message: `Câu ${qNum} thiếu chỉ định đáp án đúng (VD: thêm dòng "Đáp án: B" hoặc in đậm chữ cái B).` });
+          errors.push({ line: Number(qNum) || globalCount, message: `Câu ${qNum} thiếu chỉ định đáp án đúng trong file gốc (VD thêm dòng "Đáp án: B" hoặc in đậm chữ cái B).` });
+          continue;
         }
 
         questions.push({
-          id: `q_txt_${Date.now()}_${count}`,
+          id: `q_txt_${Date.now()}_${globalCount}`,
           grade: defaultGrade,
           topic: defaultTopic,
           level: 'Biet',
           type: 'TN',
-          content: content || `Câu hỏi số ${qNum}`,
+          content,
           options: { A: optA, B: optB, C: optC, D: optD },
-          correctOption: correctOpt || 'A',
+          correctOption: correctOpt,
           explanation,
           points: 0.25,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
       }
-    } catch (err: any) {
-      errors.push({ line: Number(qNum) || count, message: `Lỗi đọc câu ${qNum}: ${err.message}` });
     }
-  }
+  });
 
-  if (questions.length === 0 && count === 0) {
+  if (questions.length === 0) {
     errors.push({
       line: 1,
-      message: 'Không tìm thấy định dạng "Câu 1.", "Câu 2:" hoặc "A.", "B." trong tài liệu. Vui lòng tải file mẫu để kiểm tra.',
+      message: 'Không tìm thấy câu hỏi hợp lệ trong tài liệu. Vui lòng kiểm tra định dạng hoặc tải file đề mẫu để đối chiếu.',
     });
   }
 
@@ -391,72 +499,74 @@ export function parseTextOrHtmlContent(
 }
 
 /**
- * Tải file mẫu Excel (.xlsx) chuẩn cấu trúc ngân hàng câu hỏi môn Công nghệ
+ * Tải file mẫu Excel (.xlsx) chuẩn cấu trúc đề thi 10 điểm (12 TN + 4 DS + 6 TLN)
  */
 export function downloadSampleExcel() {
-  const sampleData = [
+  const sampleData: any[] = [
+    // PHẦN I: 12 CÂU TRẮC NGHIỆM (3.0 ĐIỂM)
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ khí chế tạo & Vật liệu', 'Mức độ': 'Biết', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Thép cacbon là hợp kim của sắt (Fe) và cacbon (C) với hàm lượng cacbon trong giới hạn nào?', 'Đáp án A': 'Lớn hơn 2,14%', 'Đáp án B': 'Nhỏ hơn hoặc bằng 2,14%', 'Đáp án C': 'Từ 3% đến 5%', 'Đáp án D': 'Lớn hơn 5%', 'Đáp án đúng': 'B', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ khí chế tạo & Vật liệu', 'Mức độ': 'Biết', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Gang xám là vật liệu cơ khí được sử dụng phổ biến để đúc chi tiết nào sau đây?', 'Đáp án A': 'Thân máy, vỏ hộp giảm tốc', 'Đáp án B': 'Lò xo giảm xóc', 'Đáp án C': 'Dây dẫn điện', 'Đáp án D': 'Lưỡi cắt gọt kim loại', 'Đáp án đúng': 'A', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ khí chế tạo & Vật liệu', 'Mức độ': 'Hiểu', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Phương pháp gia công kim loại nào sau đây thuộc nhóm gia công cắt gọt có phôi?', 'Đáp án A': 'Hàn hồ quang', 'Đáp án B': 'Rèn tự do', 'Đáp án C': 'Phay mặt phẳng', 'Đáp án D': 'Dập nguội', 'Đáp án đúng': 'C', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ khí chế tạo & Vật liệu', 'Mức độ': 'Hiểu', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Trên máy tiện vạn năng, chuyển động chính cắt gọt là chuyển động nào?', 'Đáp án A': 'Chuyển động tịnh tiến của dao tiện', 'Đáp án B': 'Chuyển động quay tròn của phôi', 'Đáp án C': 'Chuyển động quay tròn của dao tiện', 'Đáp án D': 'Chuyển động tịnh tiến của ụ động', 'Đáp án đúng': 'B', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ cấu truyền lực', 'Mức độ': 'Biết', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Cơ cấu biến đổi chuyển động nào biến đổi chuyển động quay thành chuyển động tịnh tiến qua lại?', 'Đáp án A': 'Cơ cấu tay quay con trượt', 'Đáp án B': 'Bộ truyền đai dẹt', 'Đáp án C': 'Bộ truyền xích con lăn', 'Đáp án D': 'Bộ truyền bánh răng trụ', 'Đáp án đúng': 'A', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ cấu truyền lực', 'Mức độ': 'Vận dụng', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Bộ truyền bánh răng ăn khớp ngoài có Z1 = 25 răng, Z2 = 75 răng. Tỉ số truyền i của bộ truyền là:', 'Đáp án A': 'i = 0,33', 'Đáp án B': 'i = 3', 'Đáp án C': 'i = 5', 'Đáp án D': 'i = 2', 'Đáp án đúng': 'B', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Biết', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Điểm chết dưới (ĐCD) của piston trong xilanh động cơ đốt trong được định nghĩa là gì?', 'Đáp án A': 'Vị trí piston ở gần trục khuỷu nhất', 'Đáp án B': 'Vị trí piston ở xa trục khuỷu nhất', 'Đáp án C': 'Vị trí bugi đánh lửa', 'Đáp án D': 'Vị trí vòi phun bắt đầu phun nhiên liệu', 'Đáp án đúng': 'A', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Biết', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Thể tích không gian trong xilanh giới hạn bởi ĐCT và ĐCD được gọi là gì?', 'Đáp án A': 'Thể tích buồng cháy Vc', 'Đáp án B': 'Thể tích công tác Vh', 'Đáp án C': 'Thể tích toàn phần Va', 'Đáp án D': 'Tỉ số nén epsilon', 'Đáp án đúng': 'B', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Hiểu', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Trong động cơ 4 kỳ, kỳ nào là kỳ duy nhất sinh công làm quay trục khuỷu?', 'Đáp án A': 'Kỳ 1 nạp', 'Đáp án B': 'Kỳ 2 nén', 'Đáp án C': 'Kỳ 3 nổ (cháy - giãn nở)', 'Đáp án D': 'Kỳ 4 xả', 'Đáp án đúng': 'C', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Hiểu', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Ở kỳ nén của động cơ điêzen 4 kỳ, chất môi giới được nén trong xilanh là gì?', 'Đáp án A': 'Không khí sạch thuần túy', 'Đáp án B': 'Hòa khí gồm xăng và không khí', 'Đáp án C': 'Hỗn hợp dầu điêzen và không khí', 'Đáp án D': 'Khí xả từ chu trình trước', 'Đáp án đúng': 'A', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Hệ thống cơ khí', 'Mức độ': 'Biết', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Cơ cấu phối khí dùng xupap trong động cơ đốt trong có nhiệm vụ gì?', 'Đáp án A': 'Đóng mở cửa nạp và cửa thải đúng thời điểm quy định', 'Đáp án B': 'Làm mát xilanh và nắp máy', 'Đáp án C': 'Bôi trơn các bề mặt ma sát', 'Đáp án D': 'Cung cấp tia lửa điện đốt cháy hòa khí', 'Đáp án đúng': 'A', 'Điểm': 0.25 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'An toàn lao động', 'Mức độ': 'Biết', 'Loại câu': 'TN', 'Nội dung câu hỏi': 'Quy tắc an toàn nào sau đây là BẮT BUỘC khi vận hành máy tiện kim loại?', 'Đáp án A': 'Đeo găng tay vải bảo hộ khi gia công', 'Đáp án B': 'Đeo kính bảo hộ, mặc quần áo gọn gàng và không dùng găng tay khi trục quay', 'Đáp án C': 'Cúi sát đầu vào phôi để quan sát vết cắt', 'Đáp án D': 'Dùng tay không gạt phoi vụn nóng', 'Đáp án đúng': 'B', 'Điểm': 0.25 },
+
+    // PHẦN II: 4 CÂU ĐÚNG / SAI (4.0 ĐIỂM, MỖI CÂU ĐỦ 4 LỆNH HỎI a, b, c, d)
     {
-      'Lớp': '11',
-      'Chủ đề/Bài': 'Cơ khí chế tạo & Vật liệu',
-      'Mức độ': 'Biết',
-      'Loại câu': 'TN',
-      'Nội dung câu hỏi': 'Gang là hợp kim của sắt (Fe) và cacbon (C) có hàm lượng cacbon trong khoảng nào?',
-      'Đáp án A': 'Lớn hơn 2,14%',
-      'Đáp án B': 'Nhỏ hơn 2,14%',
-      'Đáp án C': 'Từ 0,1% đến 1,5%',
-      'Đáp án D': 'Chính xác 0,5%',
-      'Đáp án đúng': 'A',
-      'Lời giải/Gợi ý': 'Gang có hàm lượng C > 2,14%. Thép có hàm lượng C <= 2,14%.',
-      'Điểm': 0.25,
+      'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Hiểu', 'Loại câu': 'DS',
+      'Nội dung câu hỏi': 'Xét nguyên lý hoạt động của động cơ xăng 4 kỳ một xilanh trong một chu trình công tác:',
+      'Đáp án A': 'Ở kỳ nạp, piston đi từ ĐCT xuống ĐCD, hòa khí xăng-không khí được hút vào xilanh.',
+      'Đáp án B': 'Ở kỳ nén, cả hai xupap nạp và thải đều mở để hòa khí lưu thông.',
+      'Đáp án C': 'Cuối kỳ nén, bugi bật tia lửa điện để đốt cháy hòa khí đã được nén áp suất cao.',
+      'Đáp án D': 'Sau một chu trình hoàn thành 4 kỳ, trục khuỷu của động cơ quay đúng 2 vòng (720 độ).',
+      'Đáp án đúng': 'Đ-S-Đ-Đ', 'Điểm': 1.0,
     },
     {
-      'Lớp': '11',
-      'Chủ đề/Bài': 'Động cơ đốt trong',
-      'Mức độ': 'Hiểu',
-      'Loại câu': 'DS',
-      'Nội dung câu hỏi': 'Trong chu trình hoạt động của động cơ 4 kỳ, hãy nhận định tính Đúng/Sai:',
-      'Đáp án A': 'Kỳ 1 nạp hòa khí vào xilanh đối với động cơ xăng',
-      'Đáp án B': 'Kỳ 2 nén hòa khí, hai xupap đều đóng kín',
-      'Đáp án C': 'Kỳ 3 nổ - sinh công, piston đi từ ĐCT xuống ĐCD',
-      'Đáp án D': 'Kỳ 4 xả, trục khuỷu quay đúng 4 vòng',
-      'Đáp án đúng': 'Đ-Đ-Đ-S',
-      'Lời giải/Gợi ý': 'Kỳ 4 xả trục khuỷu chỉ hoàn thành 2 vòng quay trong cả chu trình 4 kỳ.',
-      'Điểm': 1.0,
+      'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Hiểu', 'Loại câu': 'DS',
+      'Nội dung câu hỏi': 'Về sự khác biệt giữa động cơ điêzen 4 kỳ và động cơ xăng 4 kỳ:',
+      'Đáp án A': 'Động cơ điêzen dùng vòi phun nhiên liệu áp suất cao, không có bugi đánh lửa.',
+      'Đáp án B': 'Tỉ số nén epsilon của động cơ điêzen thường nhỏ hơn tỉ số nén của động cơ xăng.',
+      'Đáp án C': 'Động cơ điêzen tự bốc cháy hòa khí nhờ nhiệt độ và áp suất cao ở cuối kỳ nén.',
+      'Đáp án D': 'Hiệu suất nhiệt của động cơ điêzen thường cao hơn hiệu suất của động cơ xăng.',
+      'Đáp án đúng': 'Đ-S-Đ-Đ', 'Điểm': 1.0,
     },
     {
-      'Lớp': '12',
-      'Chủ đề/Bài': 'Kĩ thuật điện',
-      'Mức độ': 'Vận dụng',
-      'Loại câu': 'TLN',
-      'Nội dung câu hỏi': 'Một tải 3 pha đối xứng nối sao có Ud = 380V. Tính điện áp pha Up (V)? (Làm tròn đơn vị)',
-      'Đáp án A': '',
-      'Đáp án B': '',
-      'Đáp án C': '',
-      'Đáp án D': '',
-      'Đáp án đúng': '220|220V',
-      'Lời giải/Gợi ý': 'Up = Ud / sqrt(3) = 380 / 1.732 ≈ 220 V.',
-      'Điểm': 0.5,
+      'Lớp': '11', 'Chủ đề/Bài': 'Cơ khí chế tạo & Vật liệu', 'Mức độ': 'Hiểu', 'Loại câu': 'DS',
+      'Nội dung câu hỏi': 'Nhận định về đặc tính cơ học và phạm vi ứng dụng của vật liệu kim loại cơ khí:',
+      'Đáp án A': 'Thép cacbon có độ bền và tính dẻo tốt hơn gang xám nên dùng chế tạo chi tiết chịu lực lớn.',
+      'Đáp án B': 'Gang xám có tính đúc rất tốt và khả năng giảm chấn rung động cao.',
+      'Đáp án C': 'Đồng và hợp kim của đồng có tính dẫn điện, dẫn nhiệt kém hơn thép.',
+      'Đáp án D': 'Nhôm và hợp kim nhôm có khối lượng riêng nhỏ, chống ăn mòn tốt trong khí quyển.',
+      'Đáp án đúng': 'Đ-Đ-S-Đ', 'Điểm': 1.0,
     },
     {
-      'Lớp': '10',
-      'Chủ đề/Bài': 'Vẽ kĩ thuật & Thiết kế',
-      'Mức độ': 'Vận dụng',
-      'Loại câu': 'TL',
-      'Nội dung câu hỏi': 'Hãy trình bày các bước lập bản vẽ chi tiết từ vật mẫu cơ khí trong thực tế sản xuất.',
-      'Đáp án A': '',
-      'Đáp án B': '',
-      'Đáp án C': '',
-      'Đáp án D': '',
-      'Đáp án đúng': 'Bước 1: Quan sát, phân tích chi tiết. Bước 2: Chọn phương án biểu diễn. Bước 3: Vẽ phác các hình chiếu. Bước 4: Đo kích thước và ghi kích thước. Bước 5: Kiểm tra và hoàn thiện khung tên.',
-      'Lời giải/Gợi ý': 'Đầy đủ 5 bước theo tiêu chuẩn TCVN.',
-      'Điểm': 1.5,
+      'Lớp': '11', 'Chủ đề/Bài': 'Gia công cơ khí', 'Mức độ': 'Hiểu', 'Loại câu': 'DS',
+      'Nội dung câu hỏi': 'Nhận định về các phương pháp gia công cơ khí thông dụng trong chế tạo máy:',
+      'Đáp án A': 'Tiện là phương pháp gia công chủ yếu để tạo các bề mặt tròn xoay (mặt trụ, mặt côn, ren).',
+      'Đáp án B': 'Phay có thể gia công được các mặt phẳng, rãnh then, then hoa và bánh răng.',
+      'Đáp án C': 'Khoan là phương pháp gia công tạo lỗ từ phôi đặc bằng dụng cụ cắt gọi là mũi khoan.',
+      'Đáp án D': 'Mài là phương pháp gia công thô nhằm bóc tách nhanh lượng dư kim loại lớn.',
+      'Đáp án đúng': 'Đ-Đ-Đ-S', 'Điểm': 1.0,
     },
+
+    // PHẦN III: 6 CÂU TRẢ LỜI NGẮN (3.0 ĐIỂM, MỖI CÂU 0.5Đ)
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ cấu truyền lực', 'Mức độ': 'Vận dụng', 'Loại câu': 'TLN', 'Nội dung câu hỏi': 'Một bộ truyền đai có đường kính bánh dẫn D1 = 120 mm quay với tốc độ n1 = 1400 vòng/phút, bánh bị dẫn có đường kính D2 = 240 mm (bỏ qua trượt đai). Tính tốc độ quay n2 của bánh bị dẫn (vòng/phút)?', 'Đáp án đúng': '700|700 vòng/phút', 'Điểm': 0.5 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Cơ cấu truyền lực', 'Mức độ': 'Vận dụng', 'Loại câu': 'TLN', 'Nội dung câu hỏi': 'Hộp giảm tốc bánh răng có tỉ số truyền i = 4. Trục vào quay với tốc độ n1 = 1200 vòng/phút. Tốc độ quay của trục ra n2 là bao nhiêu vòng/phút?', 'Đáp án đúng': '300|300 vòng/phút', 'Điểm': 0.5 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Vận dụng', 'Loại câu': 'TLN', 'Nội dung câu hỏi': 'Động cơ 4 kỳ 1 xilanh có đường kính D = 80 mm và hành trình piston S = 90 mm. Thể tích công tác Vh của xilanh xấp xỉ bao nhiêu cm³? (Lấy số nguyên gần nhất).', 'Đáp án đúng': '452|452cm3', 'Điểm': 0.5 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Động cơ đốt trong', 'Mức độ': 'Vận dụng', 'Loại câu': 'TLN', 'Nội dung câu hỏi': 'Một động cơ có thể tích toàn phần Va = 500 cm³ và thể tích buồng cháy Vc = 50 cm³. Tỉ số nén epsilon của động cơ này bằng bao nhiêu?', 'Đáp án đúng': '10', 'Điểm': 0.5 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'Gia công cơ khí', 'Mức độ': 'Vận dụng', 'Loại câu': 'TLN', 'Nội dung câu hỏi': 'Khi tiện một chi tiết trục thép có đường kính d = 50 mm với tốc độ cắt v = 62,8 m/phút. Tính số vòng quay n của trục chính máy tiện (vòng/phút)? (Lấy số nguyên).', 'Đáp án đúng': '400|400 vòng/phút', 'Điểm': 0.5 },
+    { 'Lớp': '11', 'Chủ đề/Bài': 'An toàn cơ khí', 'Mức độ': 'Hiểu', 'Loại câu': 'TLN', 'Nội dung câu hỏi': 'Trong an toàn xưởng cơ khí, khoảng cách an toàn tối thiểu từ bệ máy tiện đến lối đi bộ chính là bao nhiêu mét theo tiêu chuẩn TCVN? (Ghi số thập phân, vd: 1.0 hoặc 1.5).', 'Đáp án đúng': '1.0|1|1m', 'Điểm': 0.5 },
   ];
 
   const worksheet = XLSX.utils.json_to_sheet(sampleData);
-  // Đặt độ rộng cột cho đẹp mắt
   worksheet['!cols'] = [
-    { wch: 8 }, // Lớp
+    { wch: 8 },  // Lớp
     { wch: 25 }, // Chủ đề
     { wch: 12 }, // Mức độ
     { wch: 10 }, // Loại câu
@@ -466,83 +576,17 @@ export function downloadSampleExcel() {
     { wch: 25 }, // C
     { wch: 25 }, // D
     { wch: 14 }, // Đáp án đúng
-    { wch: 30 }, // Lời giải
     { wch: 8 },  // Điểm
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'CauHoi');
-  XLSX.writeFile(workbook, 'Mau_Cau_Hoi_Cong_Nghe_THPT.xlsx');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'DeThiMau');
+  XLSX.writeFile(workbook, 'De_Thi_Mau_10_Diem_Cong_Nghe_11.xlsx');
 }
 
 /**
- * Tải file mẫu Word (.docx) chuẩn cấu trúc môn Công nghệ
- */
-export async function downloadSampleDocx() {
-  const doc = new Document({
-    sections: [
-      {
-        properties: {},
-        children: [
-          new Paragraph({
-            text: 'MẪU SOẠN NGÂN HÀNG CÂU HỎI MÔN CÔNG NGHỆ THPT (2018)',
-            heading: HeadingLevel.HEADING_1,
-            alignment: 'center',
-          }),
-          new Paragraph({
-            text: 'Quy ước soạn: Sử dụng "Câu 1.", "Câu 2:"... Các phương án bắt đầu bằng "A.", "B.", "C.", "D.". Đáp án đúng có thể in đậm hoặc ghi dòng "Đáp án: X". Dạng Đúng/Sai dùng "a)", "b)", "c)", "d)" kèm [Đ] hoặc [S].',
-            spacing: { after: 200 },
-          }),
-
-          // Câu 1
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 1. ', bold: true }),
-              new TextRun('Trong phương pháp chiếu góc thứ nhất, hình chiếu bằng có hướng chiếu từ đâu?'),
-            ],
-          }),
-          new Paragraph({ text: 'A. Từ trước tới' }),
-          new Paragraph({ children: [new TextRun({ text: 'B. Từ trên xuống', bold: true })] }),
-          new Paragraph({ text: 'C. Từ trái sang' }),
-          new Paragraph({ text: 'D. Từ phải sang' }),
-          new Paragraph({ text: 'Đáp án: B', spacing: { after: 150 } }),
-
-          // Câu 2
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 2. ', bold: true }),
-              new TextRun('Động cơ đốt trong 4 kỳ xăng, hãy nhận định tính Đúng/Sai của các ý sau:'),
-            ],
-          }),
-          new Paragraph({ text: 'a) Kỳ 1 nạp hòa khí xăng và không khí vào xilanh. [Đ]' }),
-          new Paragraph({ text: 'b) Kỳ 2 nén không khí thuần túy như động cơ diesel. [S]' }),
-          new Paragraph({ text: 'c) Cuối kỳ nén bugi bật tia lửa điện đốt cháy hòa khí. [Đ]' }),
-          new Paragraph({ text: 'd) Trục khuỷu quay 2 vòng sau mỗi chu trình 4 kỳ. [Đ]', spacing: { after: 150 } }),
-
-          // Câu 3
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 3. ', bold: true }),
-              new TextRun('Trong mạch điện 3 pha đối xứng nối sao (Y), biết điện áp pha Up = 220V. Giá trị điện áp dây Ud xấp xỉ bao nhiêu Vôn?'),
-            ],
-          }),
-          new Paragraph({ text: 'Đáp án ngắn: 380|381' }),
-        ],
-      },
-    ],
-  });
-
-  const blob = await Packer.toBlob(doc);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'Mau_Cau_Hoi_Cong_Nghe_THPT.docx';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/**
- * Tải file đề thi gốc mẫu (.docx) đầy đủ 4 phần chuẩn CT GDPT 2018 môn Công nghệ
+ * Tải file đề thi gốc mẫu (.docx) đầy đủ chuẩn 10 điểm (12 TN + 4 Đ/S + 6 TLN)
+ * Dữ liệu kỹ thuật chuẩn xác thực môn Công nghệ 11
  */
 export async function downloadSampleOriginalExamDocx() {
   const doc = new Document({
@@ -550,14 +594,8 @@ export async function downloadSampleOriginalExamDocx() {
       {
         properties: {},
         children: [
-          new Paragraph({
-            text: 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT',
-            alignment: 'center',
-          }),
-          new Paragraph({
-            text: 'TỔ: VẬT LÍ - CÔNG NGHỆ',
-            alignment: 'center',
-          }),
+          new Paragraph({ text: 'TRƯỜNG THPT CHUYÊN LÊ KHIẾT', alignment: 'center' }),
+          new Paragraph({ text: 'TỔ: VẬT LÍ - CÔNG NGHỆ', alignment: 'center' }),
           new Paragraph({
             text: 'ĐỀ THI KIỂM TRA ĐỊNH KÌ MÔN CÔNG NGHỆ 11 (CÔNG NGHỆ CƠ KHÍ)',
             heading: HeadingLevel.HEADING_1,
@@ -565,132 +603,142 @@ export async function downloadSampleOriginalExamDocx() {
             spacing: { before: 100, after: 150 },
           }),
           new Paragraph({
-            text: 'Thời gian làm bài: 45 phút (Không kể thời gian phát đề)',
+            text: 'Thời gian làm bài: 45 phút · Tổng điểm: 10.0 điểm',
             alignment: 'center',
             spacing: { after: 200 },
           }),
 
-          // PHẦN I
+          // --- PHẦN I ---
           new Paragraph({
             children: [
-              new TextRun({ text: 'PHẦN I. Thí sinh trả lời từ câu 1 đến câu 4. Mỗi câu hỏi thí sinh chỉ chọn một phương án.', bold: true }),
+              new TextRun({
+                text: 'PHẦN I. Thí sinh trả lời từ câu 1 đến câu 12. Mỗi câu hỏi thí sinh chỉ chọn một phương án. (3,0 điểm - Mỗi câu đúng 0,25 điểm)',
+                bold: true,
+              }),
             ],
             spacing: { before: 150, after: 100 },
           }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 1. ', bold: true }),
-              new TextRun('Vật liệu nào sau đây thuộc nhóm kim loại đen trong cơ khí chế tạo?'),
-            ],
-          }),
-          new Paragraph({ text: 'A. Đồng thanh' }),
-          new Paragraph({ text: 'B. Nhôm đúc' }),
-          new Paragraph({ children: [new TextRun({ text: 'C. Gang xám', bold: true })] }),
-          new Paragraph({ text: 'D. Hợp kim titan' }),
-          new Paragraph({ text: 'Đáp án: C', spacing: { after: 120 } }),
 
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 2. ', bold: true }),
-              new TextRun('Trong động cơ đốt trong 4 kỳ, loại động cơ nào tự bốc cháy hòa khí do nhiệt độ và áp suất cao?'),
-            ],
-          }),
-          new Paragraph({ text: 'A. Động cơ xăng 4 kỳ' }),
-          new Paragraph({ children: [new TextRun({ text: 'B. Động cơ Điêzen (Diesel)', bold: true })] }),
-          new Paragraph({ text: 'C. Động cơ xăng 2 kỳ' }),
-          new Paragraph({ text: 'D. Động cơ Wankel' }),
-          new Paragraph({ text: 'Đáp án: B', spacing: { after: 120 } }),
+          // 12 câu TN
+          ...[
+            { num: 1, text: 'Thép cacbon là hợp kim của sắt (Fe) và cacbon (C) với hàm lượng cacbon trong giới hạn nào?', a: 'Lớn hơn 2,14%', b: 'Nhỏ hơn hoặc bằng 2,14%', c: 'Từ 3% đến 5%', d: 'Lớn hơn 5%', key: 'B' },
+            { num: 2, text: 'Gang xám là vật liệu cơ khí được sử dụng phổ biến để đúc chi tiết nào sau đây?', a: 'Thân máy, vỏ hộp giảm tốc', b: 'Lò xo giảm xóc chịu uốn', c: 'Dây dẫn điện cao áp', d: 'Lưỡi cắt gọt kim loại', key: 'A' },
+            { num: 3, text: 'Phương pháp gia công kim loại nào sau đây thuộc nhóm gia công cắt gọt có phoi?', a: 'Hàn hồ quang điện', b: 'Rèn tự do nhiệt', c: 'Phay mặt phẳng chi tiết', d: 'Dập vuốt nguội', key: 'C' },
+            { num: 4, text: 'Trên máy tiện vạn năng kim loại, chuyển động chính cắt gọt là chuyển động nào?', a: 'Chuyển động tịnh tiến của dao tiện', b: 'Chuyển động quay tròn của phôi', c: 'Chuyển động quay tròn của dao tiện', d: 'Chuyển động tịnh tiến ụ động', key: 'B' },
+            { num: 5, text: 'Cơ cấu biến đổi chuyển động nào biến đổi chuyển động quay thành chuyển động tịnh tiến qua lại?', a: 'Cơ cấu tay quay con trượt', b: 'Bộ truyền đai dẹt', c: 'Bộ truyền xích con lăn', d: 'Bộ truyền bánh răng trụ', key: 'A' },
+            { num: 6, text: 'Bộ truyền bánh răng ăn khớp ngoài có Z1 = 25 răng, Z2 = 75 răng. Tỉ số truyền i của bộ truyền là:', a: 'i = 0,33', b: 'i = 3', c: 'i = 5', d: 'i = 2', key: 'B' },
+            { num: 7, text: 'Điểm chết dưới (ĐCD) của piston trong xilanh động cơ đốt trong được định nghĩa là gì?', a: 'Vị trí piston ở gần trục khuỷu nhất', b: 'Vị trí piston ở xa trục khuỷu nhất', c: 'Vị trí bugi đánh lửa', d: 'Vị trí vòi phun bắt đầu phun nhiên liệu', key: 'A' },
+            { num: 8, text: 'Thể tích không gian trong xilanh giới hạn bởi ĐCT và ĐCD được gọi là gì?', a: 'Thể tích buồng cháy Vc', b: 'Thể tích công tác Vh', c: 'Thể tích toàn phần Va', d: 'Tỉ số nén epsilon', key: 'B' },
+            { num: 9, text: 'Trong động cơ 4 kỳ, kỳ nào là kỳ duy nhất sinh công làm quay trục khuỷu?', a: 'Kỳ 1 nạp', b: 'Kỳ 2 nén', c: 'Kỳ 3 nổ (cháy - giãn nở)', d: 'Kỳ 4 xả', key: 'C' },
+            { num: 10, text: 'Ở kỳ nén của động cơ điêzen 4 kỳ, chất môi giới được nén trong xilanh là gì?', a: 'Không khí sạch thuần túy', b: 'Hòa khí gồm xăng và không khí', c: 'Hỗn hợp dầu điêzen và không khí', d: 'Khí xả từ chu trình trước', key: 'A' },
+            { num: 11, text: 'Cơ cấu phối khí dùng xupap trong động cơ đốt trong có nhiệm vụ gì?', a: 'Đóng mở cửa nạp và cửa thải đúng thời điểm quy định', b: 'Làm mát xilanh và nắp máy', c: 'Bôi trơn các bề mặt ma sát', d: 'Cung cấp tia lửa điện đốt cháy hòa khí', key: 'A' },
+            { num: 12, text: 'Quy tắc an toàn nào sau đây là BẮT BUỘC khi vận hành máy tiện kim loại?', a: 'Đeo găng tay vải bảo hộ khi gia công', b: 'Đeo kính bảo hộ, mặc gọn gàng và không dùng găng tay khi trục quay', c: 'Cúi sát đầu vào phôi quan sát vết cắt', d: 'Dùng tay gạt phoi vụn nóng', key: 'B' },
+          ].flatMap(q => [
+            new Paragraph({
+              children: [
+                new TextRun({ text: `Câu ${q.num}. `, bold: true }),
+                new TextRun(q.text),
+              ],
+            }),
+            new Paragraph({ text: `A. ${q.a}` }),
+            new Paragraph({ text: `B. ${q.b}` }),
+            new Paragraph({ text: `C. ${q.c}` }),
+            new Paragraph({ text: `D. ${q.d}` }),
+            new Paragraph({ text: `Đáp án: ${q.key}`, spacing: { after: 120 } }),
+          ]),
 
+          // --- PHẦN II ---
           new Paragraph({
             children: [
-              new TextRun({ text: 'Câu 3. ', bold: true }),
-              new TextRun('Chi tiết nào có nhiệm vụ đóng mở các cửa nạp và cửa xả đúng thời điểm trong động cơ đốt trong?'),
+              new TextRun({
+                text: 'PHẦN II. Thí sinh trả lời từ câu 1 đến câu 4. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn Đúng hoặc Sai. (4,0 điểm - Mỗi câu 1,0 điểm, đúng 1 ý 0,1đ, 2 ý 0,25đ, 3 ý 0,5đ, 4 ý 1,0đ)',
+                bold: true,
+              }),
             ],
+            spacing: { before: 180, after: 120 },
           }),
-          new Paragraph({ children: [new TextRun({ text: 'A. Cơ cấu phối khí (Xupap)', bold: true })] }),
-          new Paragraph({ text: 'B. Thanh truyền' }),
-          new Paragraph({ text: 'C. Trục khuỷu' }),
-          new Paragraph({ text: 'D. Bánh đà' }),
-          new Paragraph({ text: 'Đáp án: A', spacing: { after: 120 } }),
 
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 4. ', bold: true }),
-              new TextRun('Tỉ số truyền i giữa bánh dẫn Z1 = 20 răng và bánh bị dẫn Z2 = 60 răng là:'),
-            ],
-          }),
-          new Paragraph({ text: 'A. i = 0,2' }),
-          new Paragraph({ children: [new TextRun({ text: 'B. i = 3', bold: true })] }),
-          new Paragraph({ text: 'C. i = 1/3' }),
-          new Paragraph({ text: 'D. i = 4' }),
-          new Paragraph({ text: 'Đáp án: B', spacing: { after: 150 } }),
+          // 4 câu Đúng/Sai, mỗi câu đủ 4 ý a, b, c, d
+          ...[
+            {
+              num: 1,
+              lead: 'Xét chu trình làm việc của động cơ xăng 4 kỳ một xilanh trong một chu trình công tác:',
+              items: [
+                { label: 'a', text: 'Ở kỳ nạp, piston đi từ ĐCT xuống ĐCD, hòa khí xăng-không khí được hút vào xilanh.', ans: 'Đ' },
+                { label: 'b', text: 'Ở kỳ nén, cả hai xupap nạp và thải đều mở để hòa khí lưu thông.', ans: 'S' },
+                { label: 'c', text: 'Cuối kỳ nén, bugi bật tia lửa điện để đốt cháy hòa khí nén áp suất cao.', ans: 'Đ' },
+                { label: 'd', text: 'Sau khi hoàn thành 4 kỳ, trục khuỷu của động cơ quay đúng 2 vòng (720 độ).', ans: 'Đ' },
+              ],
+            },
+            {
+              num: 2,
+              lead: 'Về sự khác biệt giữa động cơ điêzen 4 kỳ và động cơ xăng 4 kỳ:',
+              items: [
+                { label: 'a', text: 'Động cơ điêzen dùng vòi phun nhiên liệu áp suất cao, không có bugi đánh lửa.', ans: 'Đ' },
+                { label: 'b', text: 'Tỉ số nén của động cơ điêzen thường nhỏ hơn tỉ số nén của động cơ xăng.', ans: 'S' },
+                { label: 'c', text: 'Động cơ điêzen tự bốc cháy hòa khí nhờ nhiệt độ và áp suất cao ở cuối kỳ nén.', ans: 'Đ' },
+                { label: 'd', text: 'Hiệu suất nhiệt của động cơ điêzen thường cao hơn hiệu suất của động cơ xăng.', ans: 'Đ' },
+              ],
+            },
+            {
+              num: 3,
+              lead: 'Nhận định về đặc tính cơ học và phạm vi ứng dụng của vật liệu kim loại cơ khí:',
+              items: [
+                { label: 'a', text: 'Thép cacbon có độ bền và tính dẻo tốt hơn gang xám nên dùng chế tạo chi tiết chịu lực lớn.', ans: 'Đ' },
+                { label: 'b', text: 'Gang xám có tính đúc rất tốt và khả năng giảm chấn rung động cao.', ans: 'Đ' },
+                { label: 'c', text: 'Đồng và hợp kim của đồng có tính dẫn điện, dẫn nhiệt kém hơn thép.', ans: 'S' },
+                { label: 'd', text: 'Nhôm và hợp kim nhôm có khối lượng riêng nhỏ, chống ăn mòn tốt trong khí quyển.', ans: 'Đ' },
+              ],
+            },
+            {
+              num: 4,
+              lead: 'Nhận định về các phương pháp gia công cơ khí thông dụng trong chế tạo máy:',
+              items: [
+                { label: 'a', text: 'Tiện là phương pháp gia công chủ yếu để tạo các bề mặt tròn xoay (mặt trụ, mặt côn, ren).', ans: 'Đ' },
+                { label: 'b', text: 'Phay có thể gia công được các mặt phẳng, rãnh then, then hoa và bánh răng.', ans: 'Đ' },
+                { label: 'c', text: 'Khoan là phương pháp gia công tạo lỗ từ phôi đặc bằng dụng cụ cắt gọi là mũi khoan.', ans: 'Đ' },
+                { label: 'd', text: 'Mài là phương pháp gia công thô nhằm bóc tách nhanh lượng dư kim loại lớn.', ans: 'S' },
+              ],
+            },
+          ].flatMap(q => [
+            new Paragraph({
+              children: [
+                new TextRun({ text: `Câu ${q.num}. `, bold: true }),
+                new TextRun(q.lead),
+              ],
+            }),
+            ...q.items.map(it => new Paragraph({ text: `${it.label}) ${it.text} [${it.ans}]` })),
+            new Paragraph({ text: '', spacing: { after: 120 } }),
+          ]),
 
-          // PHẦN II
+          // --- PHẦN III ---
           new Paragraph({
             children: [
-              new TextRun({ text: 'PHẦN II. Thí sinh trả lời từ câu 5 đến câu 6. Trong mỗi ý a), b), c), d), thí sinh chọn Đúng hoặc Sai.', bold: true }),
+              new TextRun({
+                text: 'PHẦN III. Thí sinh trả lời từ câu 1 đến câu 6. Thí sinh điền đáp số ngắn vào ô tương ứng. (3,0 điểm - Mỗi câu 0,5 điểm)',
+                bold: true,
+              }),
             ],
-            spacing: { before: 150, after: 100 },
+            spacing: { before: 180, after: 120 },
           }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 5. ', bold: true }),
-              new TextRun('Xét chu trình làm việc của động cơ xăng 4 kỳ một xilanh:'),
-            ],
-          }),
-          new Paragraph({ text: 'a) Ở kỳ nạp, piston đi từ ĐCT xuống ĐCD và mở xupap nạp. [Đ]' }),
-          new Paragraph({ text: 'b) Ở kỳ nén, hai xupap đều mở để hòa khí lưu thông. [S]' }),
-          new Paragraph({ text: 'c) Cuối kỳ nén bugi bật tia lửa điện đốt cháy hòa khí nén. [Đ]' }),
-          new Paragraph({ text: 'd) Trục khuỷu quay đúng 4 vòng sau khi hoàn thành 4 kỳ. [S]', spacing: { after: 120 } }),
 
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 6. ', bold: true }),
-              new TextRun('Về các phương pháp gia công cơ khí cắt gọt thông dụng:'),
-            ],
-          }),
-          new Paragraph({ text: 'a) Tiện là phương pháp chủ yếu tạo hình bề mặt tròn xoay. [Đ]' }),
-          new Paragraph({ text: 'b) Phay thường dùng để gia công mặt phẳng, rãnh then và bánh răng. [Đ]' }),
-          new Paragraph({ text: 'c) Khoan chỉ tạo được lỗ tiết diện hình vuông. [S]' }),
-          new Paragraph({ text: 'd) Mài là phương pháp gia công tinh bề mặt sau nhiệt luyện. [Đ]', spacing: { after: 150 } }),
-
-          // PHẦN III
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'PHẦN III. Thí sinh trả lời từ câu 7 đến câu 8. Thí sinh điền đáp số ngắn vào ô tương ứng.', bold: true }),
-            ],
-            spacing: { before: 150, after: 100 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 7. ', bold: true }),
-              new TextRun('Động cơ 4 kỳ có đường kính xilanh D = 80mm và hành trình S = 90mm. Thể tích công tác Vh của một xilanh xấp xỉ bao nhiêu cm³? (Lấy số nguyên)'),
-            ],
-          }),
-          new Paragraph({ text: 'Đáp án ngắn: 452|452cm3', spacing: { after: 120 } }),
-
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 8. ', bold: true }),
-              new TextRun('Bộ truyền đai có đường kính bánh dẫn D1 = 120mm quay n1 = 1400 vòng/phút, bánh bị dẫn D2 = 240mm. Tốc độ quay n2 của bánh bị dẫn là bao nhiêu vòng/phút?'),
-            ],
-          }),
-          new Paragraph({ text: 'Đáp án ngắn: 700|700 vòng/phút', spacing: { after: 150 } }),
-
-          // PHẦN IV
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'PHẦN IV. Câu hỏi tự luận.', bold: true }),
-            ],
-            spacing: { before: 150, after: 100 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Câu 9. ', bold: true }),
-              new TextRun('Nêu quy tắc an toàn lao động khi vận hành máy tiện vạn năng trong xưởng cơ khí thực hành.'),
-            ],
-          }),
-          new Paragraph({ text: 'Tự luận: Đeo kính bảo hộ, mặc quần áo gọn gàng không đeo găng tay khi vận hành trục quay, kiểm tra kẹp chặt phôi và tháo chìa khóa mâm cặp trước khi ấn nút khởi động.', spacing: { after: 150 } }),
+          // 6 câu Trả lời ngắn
+          ...[
+            { num: 1, text: 'Một bộ truyền đai có đường kính bánh dẫn D1 = 120 mm quay với tốc độ n1 = 1400 vòng/phút, bánh bị dẫn có đường kính D2 = 240 mm (bỏ qua trượt đai). Tính tốc độ quay n2 của bánh bị dẫn (vòng/phút)?', ans: '700' },
+            { num: 2, text: 'Hộp giảm tốc bánh răng có tỉ số truyền i = 4. Trục vào quay với tốc độ n1 = 1200 vòng/phút. Tốc độ quay của trục ra n2 là bao nhiêu vòng/phút?', ans: '300' },
+            { num: 3, text: 'Động cơ 4 kỳ 1 xilanh có đường kính D = 80 mm và hành trình piston S = 90 mm. Thể tích công tác Vh của xilanh xấp xỉ bao nhiêu cm³? (Lấy số nguyên gần nhất).', ans: '452' },
+            { num: 4, text: 'Một động cơ có thể tích toàn phần Va = 500 cm³ và thể tích buồng cháy Vc = 50 cm³. Tỉ số nén epsilon của động cơ này bằng bao nhiêu?', ans: '10' },
+            { num: 5, text: 'Khi tiện một chi tiết trục thép có đường kính d = 50 mm với tốc độ cắt v = 62,8 m/phút. Tính số vòng quay n của trục chính máy tiện (vòng/phút)? (Lấy số nguyên).', ans: '400' },
+            { num: 6, text: 'Trong an toàn xưởng cơ khí, khoảng cách an toàn tối thiểu từ bệ máy tiện đến lối đi bộ chính là bao nhiêu mét theo tiêu chuẩn TCVN? (Ghi số thập phân, vd: 1.0).', ans: '1.0' },
+          ].flatMap(q => [
+            new Paragraph({
+              children: [
+                new TextRun({ text: `Câu ${q.num}. `, bold: true }),
+                new TextRun(q.text),
+              ],
+            }),
+            new Paragraph({ text: `Đáp án ngắn: ${q.ans}`, spacing: { after: 120 } }),
+          ]),
         ],
       },
     ],
@@ -700,7 +748,10 @@ export async function downloadSampleOriginalExamDocx() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'De_Thi_Goc_Mau_Cong_Nghe_11.docx';
+  a.download = 'De_Thi_Goc_Mau_10_Diem_Cong_Nghe_11.docx';
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// Alias để tương thích với các component QuestionBankView & ImportModal
+export const downloadSampleDocx = downloadSampleOriginalExamDocx;

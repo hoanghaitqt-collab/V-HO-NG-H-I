@@ -137,11 +137,15 @@ export const AssignmentManagerView: React.FC<AssignmentManagerViewProps> = ({ on
                   }}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 >
-                  {exams.map(ex => (
-                    <option key={ex.id} value={ex.id}>
-                      {ex.title} (Lớp {ex.grade} - {ex.questions.length} câu)
-                    </option>
-                  ))}
+                  {exams.length === 0 ? (
+                    <option value="">-- Chưa có đề thi nào (Hãy tạo đề trước) --</option>
+                  ) : (
+                    exams.map(ex => (
+                      <option key={ex.id} value={ex.id}>
+                        {ex.title} (Lớp {ex.grade} - {ex.questions.length} câu)
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
